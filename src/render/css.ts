@@ -148,8 +148,8 @@ export const DOC_CSS = `
 .d-quote[data-mark=true] blockquote::before{content:'\\201C';display:block;font-size:2em;line-height:.6;color:var(--accent-text)}
 /* signatures */
 .d-doc[data-sig=hardShadow]{--shadow:6px 6px 0 var(--ink)}
-.d-doc[data-sig=oversized] .d-h[data-size=xl]{font-size:calc(var(--fs-1) * 1.5);line-height:.9}
-.d-doc[data-sig=oversized] .d-h[data-size=xxl]{font-size:calc(var(--fs-xxl) * 1.3)}
+.d-doc[data-sig=oversized] .d-h[data-size=xl]{font-size:calc(var(--fs-1) * 1.22);line-height:.95}
+.d-doc[data-sig=oversized] .d-h[data-size=xxl]{font-size:calc(var(--fs-xxl) * 1.12)}
 .d-doc[data-sig=ruled] .d-sec{border-top:max(3px,calc(var(--bw) * 2)) solid var(--ink)}
 .d-doc[data-sig=ruled] .d-sec:first-child{border-top:0}
 .d-doc[data-sig=ruled] .d-h{border-bottom:max(2px,var(--bw)) solid var(--ink);padding-bottom:.15em}

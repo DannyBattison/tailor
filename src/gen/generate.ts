@@ -47,6 +47,7 @@ export function generate(o: GenOpts): Doc {
   const mood = o.mood || inf.mood || makeRng(o.seed).pick(MOOD_NAMES)
   const siteKind = o.siteKind || (inf.kind === o.kind ? inf.siteKind : '') || ''
   const tokens = genTokens(o.seed, mood, prev?.tokens, locks)
+  if (o.kind === 'app' && tokens.signature === 'marquee') tokens.signature = 'hardShadow' // marquee copy is marketing-only
   const layoutSeed = locks.layout && prev ? prev.meta.layoutSeed : o.seed
   const pool = archetypesFor(o.kind)
   const archetype = o.archetype ?? (locks.layout && prev && pool.some((a) => a.id === prev.meta.archetype) ? prev.meta.archetype : stageRng(o.seed, 'archetype').pick(pool).id)

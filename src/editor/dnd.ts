@@ -28,6 +28,7 @@ export function dropFor(root: DNode, stage: HTMLElement, e: { clientX: number; c
   if (isContainer(node)) {
     if (!node.children.length) return { id, pos: 'inside' }
     // pointer is over the container's own padding/gap: choose the nearest child gap instead
+    if (node.type === 'section' && e.target === el) return { id, pos: frac < 0.5 ? 'before' : 'after' }
     if (e.target === el || (e.target as Element).classList?.contains('d-inner')) {
       const kids = node.children.map((c) => ({ c, el: stage.querySelector(`[data-id="${c.id}"]`) as HTMLElement | null })).filter((k) => k.el)
       let best: { id: string; pos: DropPos; d: number } | null = null

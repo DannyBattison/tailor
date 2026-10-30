@@ -4,7 +4,7 @@ html,body,#root{height:100%;margin:0}
 body{font:13px/1.4 'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;background:var(--c-bg);color:var(--c-ink)}
 button,select,input,textarea{font:inherit;color:inherit}
 button{background:var(--c-panel);border:1px solid var(--c-ink);border-radius:3px;padding:4px 9px;cursor:pointer}
-button:hover:not(:disabled){background:#fff}
+button:hover:not(:disabled):not(.on):not(.primary){background:#fff}
 button:disabled{opacity:.4;cursor:not-allowed}
 button.primary{background:var(--c-hot);color:var(--c-hot-ink);border-color:var(--c-ink);font-weight:600}
 button.primary:hover{background:#c13f0b}
