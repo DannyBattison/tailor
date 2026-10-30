@@ -35,6 +35,7 @@ function useAttrs(n: DNode, cls: string, extra: Record<string, any> = {}, style:
   if (ctx.editor) {
     out['data-id'] = n.id
     out['data-type'] = n.type
+    if (n.type !== 'page') out.draggable = true
   }
   return out
 }

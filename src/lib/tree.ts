@@ -101,7 +101,6 @@ export function moveNode(root: DNode, id: string, targetId: string, pos: DropPos
   if (pos === 'inside') return insertNode(without, targetId, target.children.length, moving)
   const loc = findParent(without, targetId)
   if (!loc) return root
-  if (moving.type === 'section' && loc.parent.type !== 'page') return root
   return insertNode(without, loc.parent.id, loc.index + (pos === 'after' ? 1 : 0), moving)
 }
 
