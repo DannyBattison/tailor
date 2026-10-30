@@ -70,6 +70,8 @@ export interface Meta {
   siteKind: string
   brief: string
   name: string
+  /** copy overrides from an AI brief, merged over the content bank */
+  override?: Record<string, any>
 }
 
 export interface Doc {

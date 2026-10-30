@@ -35,9 +35,12 @@ export function buildPalette(spec: PaletteSpec): Palette {
   const muted = toHex(ensureContrast(mutedBase, bg, 4.8))
   const line = toHex(clampGamut({ l: dark ? spec.bg.l + 0.16 : spec.bg.l - 0.14, c: Math.max(0.02, spec.bg.c), h: spec.bg.h }))
   const accentFit = ensureContrast(clampGamut(spec.accent), bg, 3)
-  const accent = toHex(accentFit)
+  // push the accent until text on it reaches 4.5:1 (darker on light pages, lighter on dark ones)
+  let fit = accentFit
+  for (let i = 0; i < 40 && contrast(textOn(toHex(fit), spec.ink.h), toHex(fit)) < 4.6; i++) fit = clampGamut({ ...fit, l: fit.l + (dark ? 0.02 : -0.02) })
+  const accent = toHex(fit)
   const accent2 = toHex(ensureContrast(clampGamut(spec.accent2), bg, 3))
-  const accentText = toHex(ensureContrast(accentFit, bg, 4.6))
+  const accentText = toHex(ensureContrast(fit, bg, 4.6))
   const onAccent = textOn(accent, spec.ink.h)
   const inverse = dark
     ? toHex(clampGamut({ l: 0.94, c: 0.03, h: spec.bg.h }))
