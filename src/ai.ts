@@ -11,10 +11,10 @@ export const MODELS = [
 export type Provider = 'api' | 'claude-cli' | 'codex-cli'
 export interface CliStatus { found: boolean; path?: string; version?: string | null }
 export type CliMap = Partial<Record<Exclude<Provider, 'api'>, CliStatus>>
-export interface LlmConfig { provider: Provider; key: string; model: string }
+export interface LlmConfig { provider: Provider; key: string; model: string; cliPath?: string }
 
 /** Present only inside the Electron app (see electron/preload.cjs). */
-interface Bridge { llm: { detect(): Promise<CliMap>; run(r: { provider: string; system: string; prompt: string }): Promise<{ ok: boolean; text?: string; error?: string }> } }
+interface Bridge { llm: { detect(paths?: Record<string, string>): Promise<CliMap>; run(r: { provider: string; system: string; prompt: string; path?: string }): Promise<{ ok: boolean; text?: string; error?: string }> } }
 export const bridge = (): Bridge | undefined => (window as unknown as { handmade?: Bridge }).handmade
 
 export const PROVIDER_LABEL: Record<Provider, string> = { api: 'Anthropic API key', 'claude-cli': 'Claude Code (installed)', 'codex-cli': 'Codex (installed)' }
@@ -27,7 +27,7 @@ async function call(cfg: LlmConfig, system: string, user: string, maxTokens = 20
   if (cfg.provider !== 'api') {
     const b = bridge()
     if (!b) throw new Error('Installed CLIs are only available in the desktop app')
-    const r = await b.llm.run({ provider: cfg.provider, system, prompt: user })
+    const r = await b.llm.run({ provider: cfg.provider, system, prompt: user, path: cfg.cliPath })
     if (!r.ok) throw new Error(`${PROVIDER_LABEL[cfg.provider]}: ${r.error}`)
     return r.text ?? ''
   }

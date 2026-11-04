@@ -22,6 +22,7 @@ export interface UI {
   model: string
   provider: Provider
   cli: CliMap
+  cliPaths: Record<string, string>
   busy: string
   toast: string
   menu: '' | 'export' | 'key'
@@ -35,7 +36,7 @@ const LS_KEY = 'hm.key'
 const defaultUI = (): UI => ({
   selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '', brief: '',
   seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, layout: false },
-  variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', provider: 'api', cli: {}, busy: '', toast: '', menu: '',
+  variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', provider: 'api', cli: {}, cliPaths: {}, busy: '', toast: '', menu: '',
 })
 
 function load(): State {

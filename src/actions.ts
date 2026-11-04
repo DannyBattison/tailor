@@ -6,7 +6,7 @@ import { collectTexts, duplicateNode, find, findParent, mapNode, nearestSection,
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
 import type { Doc } from './types'
 
-export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model } }
+export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model, cliPath: ui.cliPaths[ui.provider] || undefined } }
 const needAi = () => { const { ui } = getState(); if (aiReady(llmConfig(), ui.cli)) return true; setUI({ menu: 'key' }); toast('Pick an AI provider first'); return false }
 
 const rand = () => Math.floor(Math.random() * 99999) + 1

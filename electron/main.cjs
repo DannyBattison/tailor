@@ -16,16 +16,29 @@ function searchPath() {
     path.join(home, '.local/bin'), path.join(home, '.claude/local'), path.join(home, '.npm-global/bin'), path.join(home, '.bun/bin'),
     path.join(home, '.volta/bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin',
   ]
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA ?? path.join(home, 'AppData/Roaming')
+    const local = process.env.LOCALAPPDATA ?? path.join(home, 'AppData/Local')
+    extra.push(path.join(appData, 'npm'), path.join(local, 'Programs/claude'), path.join(local, 'AnthropicClaude'))
+    // Claude desktop keeps versioned Claude Code builds here
+    try {
+      const root = path.join(appData, 'Claude', 'claude-code')
+      for (const v of fs.readdirSync(root).sort().reverse()) extra.push(path.join(root, v))
+    } catch { /* not installed */ }
+  }
   return [...(process.env.PATH ?? '').split(path.delimiter), ...extra].filter(Boolean)
 }
 const augmentedEnv = () => ({ ...process.env, PATH: [...new Set(searchPath())].join(path.delimiter), NO_COLOR: '1' })
 
+const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+
 const resolved = new Map()
-function which(bin) {
+function which(bin, override) {
+  if (override && typeof override === 'string' && path.isAbsolute(override) && isFile(override)) return Promise.resolve(override)
   if (resolved.has(bin)) return Promise.resolve(resolved.get(bin))
   const win = process.platform === 'win32'
   for (const dir of searchPath()) {
-    for (const ext of win ? ['.cmd', '.exe', ''] : ['']) {
+    for (const ext of win ? ['.exe', '.cmd', '.bat'] : ['']) {
       const p = path.join(dir, bin + ext)
       try { fs.accessSync(p, fs.constants.X_OK); if (fs.statSync(p).isFile()) { resolved.set(bin, p); return Promise.resolve(p) } } catch { /* next */ }
     }
@@ -46,10 +59,10 @@ function version(file) {
   return new Promise((res) => execFile(shell ? `"${file}"` : file, ['--version'], { timeout: 6000, env: augmentedEnv(), shell }, (err, out) => res(err ? null : out.trim().split('\n')[0])))
 }
 
-async function detect() {
+async function detect(paths = {}) {
   const out = {}
   for (const [id, bin] of Object.entries(PROVIDERS)) {
-    const file = await which(bin)
+    const file = await which(bin, paths?.[id])
     out[id] = file ? { found: true, path: file, version: await version(file) } : { found: false }
   }
   return out
@@ -75,24 +88,24 @@ function runProcess(file, args, input, cwd) {
   })
 }
 
-async function runLlm({ provider, system, prompt }) {
+async function runLlm({ provider, system, prompt, path: override }) {
   const bin = PROVIDERS[provider]
   if (!bin) return { ok: false, error: 'Unknown provider' }
   if (typeof prompt !== 'string' || typeof system !== 'string' || prompt.length + system.length > MAX_PROMPT) return { ok: false, error: 'Prompt missing or too large' }
-  const file = await which(bin)
-  if (!file) return { ok: false, error: `${bin} is not installed or not on PATH` }
+  const file = await which(bin, override)
+  if (!file) return { ok: false, error: `${bin} is not installed or not on PATH. Set its path under AI setup.` }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'handmade-llm-'))
   try {
     if (bin === 'claude') {
       // plain text in, plain text out; no tools, no session saved, so it can only write copy
-      const r = await runProcess(file, ['-p', '--output-format', 'text', '--tools', '', '--no-session-persistence'], system + '\n\n' + prompt, tmp)
-      return r.code === 0 && r.stdout.trim() ? { ok: true, text: r.stdout } : { ok: false, error: (r.stderr || r.stdout || `claude exited with ${r.code}`).trim().slice(-600) }
+      const r = await runProcess(file, ['-p', '--output-format', 'text', '--tools=', '--no-session-persistence'], system + '\n\n' + prompt, tmp)
+      return r.code === 0 && r.stdout.trim() ? { ok: true, text: r.stdout } : { ok: false, error: `${file}: ` + (r.stderr || r.stdout || `exited with ${r.code}`).trim().slice(-500) }
     }
     const outFile = path.join(tmp, 'out.txt')
     const r = await runProcess(file, ['exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'read-only', '-C', tmp, '-o', outFile, '-'], system + '\n\n' + prompt, tmp)
     let text = ''
     try { text = fs.readFileSync(outFile, 'utf8') } catch { /* no output */ }
-    return r.code === 0 && text.trim() ? { ok: true, text } : { ok: false, error: (r.stderr || `codex exited with ${r.code}`).trim().slice(-600) }
+    return r.code === 0 && text.trim() ? { ok: true, text } : { ok: false, error: `${file}: ` + (r.stderr || `exited with ${r.code}`).trim().slice(-500) }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -113,7 +126,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  ipcMain.handle('llm:detect', () => detect())
+  ipcMain.handle('llm:detect', (_e, paths) => detect(paths))
   ipcMain.handle('llm:run', (_e, req) => runLlm(req ?? {}))
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

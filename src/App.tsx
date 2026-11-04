@@ -10,7 +10,7 @@ import { Elements, Layers } from './editor/Layers'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
 import { designSystem, designSystemPrompt } from './designSystem'
-import { commit, redo, setUI, toast, undo, useStore, type Viewport } from './store'
+import { commit, getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 import type { Doc } from './types'
 
 function TopBar() {
@@ -59,6 +59,10 @@ function TopBar() {
                 <select value={ui.model} onChange={(e) => setUI({ model: e.target.value })}>{MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select>
               </>
             )}
+            {ui.provider !== 'api' && (
+              <input type="text" placeholder={ui.cli[ui.provider]?.path ?? 'Full path to the executable (optional)'} defaultValue={ui.cliPaths[ui.provider] ?? ''} title="Override the detected executable"
+                onBlur={(e) => { const cliPaths = { ...ui.cliPaths, [ui.provider]: e.target.value.trim() }; setUI({ cliPaths }); bridge()?.llm.detect(cliPaths).then((cli) => setUI({ cli })) }} />
+            )}
             {ui.provider !== 'api' && <p className="hint">Runs <code>{ui.provider === 'claude-cli' ? 'claude -p' : 'codex exec'}</code> with your existing login and settings. Claude gets no tools; Codex runs in a read-only sandbox in a temp folder.</p>}
             <button onClick={close}>Done</button>
           </div>
@@ -95,7 +99,7 @@ function TopBar() {
 export default function App() {
   const { ui } = useStore()
 
-  useEffect(() => { bridge()?.llm.detect().then((cli) => setUI({ cli })).catch(() => {}) }, [])
+  useEffect(() => { bridge()?.llm.detect(getState().ui.cliPaths).then((cli) => setUI({ cli })).catch(() => {}) }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
