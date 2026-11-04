@@ -182,8 +182,7 @@ export const DOC_CSS = `
 .d-frame.wire .d-doc::after{display:none}
 .d-frame.wire .d-doc *{transform:none !important;animation:none !important}
 .d-frame.wire .d-img{background:#fafafa;border:1px solid #999;border-radius:2px;background-image:linear-gradient(to top right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px)),linear-gradient(to bottom right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px))}
-.d-frame.wire .d-img img.d-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.d-img .d-art{display:none}
+.d-frame.wire .d-img .d-art,.d-frame.wire .d-img img.d-photo{display:none}
 .d-frame.wire .d-sec[data-bg]{background:#f1f1f1}
 .d-frame.wire .d-sec[data-bg=bg]{background:#fff}
 .d-frame.wire .d-sec{outline:1px dashed #bbb;outline-offset:-1px}
