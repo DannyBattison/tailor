@@ -42,7 +42,8 @@ function which(bin) {
 }
 
 function version(file) {
-  return new Promise((res) => execFile(file, ['--version'], { timeout: 6000, env: augmentedEnv() }, (err, out) => res(err ? null : out.trim().split('\n')[0])))
+  const shell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(file)
+  return new Promise((res) => execFile(shell ? `"${file}"` : file, ['--version'], { timeout: 6000, env: augmentedEnv(), shell }, (err, out) => res(err ? null : out.trim().split('\n')[0])))
 }
 
 async function detect() {
@@ -56,7 +57,12 @@ async function detect() {
 
 function runProcess(file, args, input, cwd) {
   return new Promise((resolve) => {
-    const child = spawn(file, args, { cwd, env: augmentedEnv(), stdio: ['pipe', 'pipe', 'pipe'] })
+    // npm shims on Windows are .cmd files, which need a shell. Every argument here is a fixed flag or a temp path
+    // (user text goes over stdin), so quoting them is safe.
+    const shell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(file)
+    const child = shell
+      ? spawn(`"${file}"`, args.map((a) => `"${a}"`), { cwd, env: augmentedEnv(), stdio: ['pipe', 'pipe', 'pipe'], shell: true })
+      : spawn(file, args, { cwd, env: augmentedEnv(), stdio: ['pipe', 'pipe', 'pipe'] })
     let stdout = ''
     let stderr = ''
     const timer = setTimeout(() => { child.kill('SIGKILL'); resolve({ code: -1, stdout, stderr: stderr + '\nTimed out' }) }, TIMEOUT_MS)
@@ -79,7 +85,7 @@ async function runLlm({ provider, system, prompt }) {
   try {
     if (bin === 'claude') {
       // plain text in, plain text out; no tools, no session saved, so it can only write copy
-      const r = await runProcess(file, ['-p', '--output-format', 'text', '--tools', '', '--no-session-persistence', '--append-system-prompt', system], prompt, tmp)
+      const r = await runProcess(file, ['-p', '--output-format', 'text', '--tools', '', '--no-session-persistence'], system + '\n\n' + prompt, tmp)
       return r.code === 0 && r.stdout.trim() ? { ok: true, text: r.stdout } : { ok: false, error: (r.stderr || r.stdout || `claude exited with ${r.code}`).trim().slice(-600) }
     }
     const outFile = path.join(tmp, 'out.txt')
