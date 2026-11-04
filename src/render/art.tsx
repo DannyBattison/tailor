@@ -3,26 +3,33 @@ import { makeRng } from '../lib/rng'
 export const ART_KINDS = ['blocks', 'stripes', 'arches', 'dots', 'waves', 'sun', 'rings'] as const
 export type ArtKind = (typeof ART_KINDS)[number]
 
-const COLORS = ['var(--accent)', 'var(--accent2)', 'var(--ink)', 'var(--surface)', 'var(--inverse)']
+const TONES = ['surface', 'accent2', 'accent', 'ink'] as const
 
 /** Generated SVG art drawn only in palette variables. Fills its box (slice). */
 export function Art({ kind, seed, tone = 0 }: { kind: ArtKind; seed: number; tone?: number }) {
   const r = makeRng(seed * 7 + tone)
   const W = 400
   const H = 300
-  const pal = r.shuffle(COLORS)
-  const bg = ['var(--surface)', 'var(--accent2)', 'var(--accent)', 'var(--ink)'][tone % 4]
-  const c = (i: number) => {
-    const col = pal[i % pal.length]
-    return col === bg ? pal[(i + 1) % pal.length] : col
-  }
+  // a disciplined palette: the ground plus at most three other tones, never the whole rainbow
+  const ground = TONES[tone % 4]
+  const pal = r.shuffle(TONES.filter((t) => t !== ground && !(ground === 'accent' && t === 'accent2'))).slice(0, 3).map((t) => `var(--${t})`)
+  const bg = `var(--${ground})`
+  const c = (i: number) => pal[i % pal.length]
   const shapes: JSX.Element[] = []
   if (kind === 'blocks') {
-    const n = r.int(4, 7)
-    for (let i = 0; i < n; i++) {
-      const w = r.int(60, 200)
-      const h = r.int(60, 180)
-      shapes.push(<rect key={i} x={r.int(-20, W - 60)} y={r.int(-20, H - 50)} width={w} height={h} fill={c(i)} rx={r.chance(0.3) ? w / 2 : 0} />)
+    // Bauhaus-style tiles on a 4x3 grid: squares, circles, quarter and half circles, with gaps left empty
+    const cell = 100
+    let k = 0
+    for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 4; gx++) {
+      const kindOf = r.weighted<string>([['square', 2], ['circle', 2], ['quarter', 3], ['half', 2], ['empty', 3]])
+      const x = gx * cell
+      const y = gy * cell
+      const col = c(k++)
+      const rot = r.pick([0, 90, 180, 270])
+      if (kindOf === 'square') shapes.push(<rect key={k} x={x} y={y} width={cell} height={cell} fill={col} />)
+      else if (kindOf === 'circle') shapes.push(<circle key={k} cx={x + cell / 2} cy={y + cell / 2} r={cell / 2} fill={col} />)
+      else if (kindOf === 'quarter') shapes.push(<path key={k} d={`M${x} ${y + cell} V${y} A${cell} ${cell} 0 0 1 ${x + cell} ${y + cell} Z`} fill={col} transform={`rotate(${rot} ${x + cell / 2} ${y + cell / 2})`} />)
+      else if (kindOf === 'half') shapes.push(<path key={k} d={`M${x} ${y + cell / 2} A${cell / 2} ${cell / 2} 0 0 1 ${x + cell} ${y + cell / 2} Z`} fill={col} transform={`rotate(${rot} ${x + cell / 2} ${y + cell / 2})`} />)
     }
   } else if (kind === 'stripes') {
     const w = W / r.int(6, 14)
@@ -41,11 +48,13 @@ export function Art({ kind, seed, tone = 0 }: { kind: ArtKind; seed: number; ton
       if (r.chance(0.5)) shapes.push(<circle key={'c' + i} cx={i * w + w / 2} cy={H - hh + w / 2 + 10} r={w / 6} fill={c(i + 2)} />)
     }
   } else if (kind === 'dots') {
-    const step = r.pick([30, 40, 50])
-    const rad = r.int(5, step / 2 - 2)
-    for (let y = step / 2; y < H; y += step) for (let x = step / 2; x < W; x += step) {
-      if (r.chance(0.2)) continue
-      shapes.push(<circle key={x + '-' + y} cx={x + (Math.floor(y / step) % 2 ? step / 2 : 0)} cy={y} r={rad * (r.chance(0.2) ? 1.6 : 1)} fill={c(r.int(0, 2))} />)
+    // a regular halftone grid: one size, two tones, a few missing
+    const step = r.pick([36, 44, 56])
+    const rad = step * r.range(0.3, 0.42)
+    const two = [c(0), c(1)]
+    for (let y = step / 2; y < H + step; y += step) for (let x = step / 2; x < W + step; x += step) {
+      if (r.chance(0.12)) continue
+      shapes.push(<circle key={x + '-' + y} cx={x + (Math.round(y / step) % 2 ? step / 2 : 0)} cy={y} r={rad} fill={two[(Math.round(x / step) + Math.round(y / step)) % 2 === 0 ? 0 : 1]} />)
     }
   } else if (kind === 'waves') {
     const n = r.int(4, 7)

@@ -3,14 +3,14 @@ import type { Rng } from '../lib/rng'
 import type { Palette } from '../types'
 
 /** Blue→purple band that reads as "default AI gradient" — avoided unless explicitly chosen. */
-export const BANNED_HUE: [number, number] = [250, 320]
+export const BANNED_HUE: [number, number] = [250, 338]
 export const isBannedHue = (h: number) => h >= BANNED_HUE[0] && h <= BANNED_HUE[1]
 
 /** Move a hue out of the banned band (towards the nearest edge). */
 export function safeHue(h: number): number {
   h = ((h % 360) + 360) % 360
   if (!isBannedHue(h)) return h
-  return h < 285 ? BANNED_HUE[0] - 12 : BANNED_HUE[1] + 14
+  return h < 294 ? BANNED_HUE[0] - 12 : BANNED_HUE[1] + 10
 }
 
 export type Strategy = 'tonal' | 'complement' | 'earth' | 'dark' | 'pop' | 'paper'
@@ -39,7 +39,8 @@ export function buildPalette(spec: PaletteSpec): Palette {
   let fit = accentFit
   for (let i = 0; i < 40 && contrast(textOn(toHex(fit), spec.ink.h), toHex(fit)) < 4.6; i++) fit = clampGamut({ ...fit, l: fit.l + (dark ? 0.02 : -0.02) })
   const accent = toHex(fit)
-  const accent2 = toHex(ensureContrast(clampGamut(spec.accent2), bg, 3))
+  // accent2 is a supporting tone (tags, marquee, art): it must carry ink text, not fight the accent
+  const accent2 = toHex(ensureContrast(clampGamut(spec.accent2), ink, 4.6))
   const accentText = toHex(ensureContrast(fit, bg, 4.6))
   const onAccent = textOn(accent, spec.ink.h)
   const inverse = dark
@@ -62,6 +63,7 @@ export function paletteIssues(p: Palette): string[] {
   chk(p.onInverse, p.inverse, 7, 'Text on inverse')
   chk(p.ink, p.surface, 7, 'Ink on surface')
   chk(p.accent, p.bg, 3, 'Accent on background')
+  chk(p.ink, p.accent2, 4.5, 'Ink on accent 2')
   return out
 }
 
@@ -86,15 +88,15 @@ export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; h
     case 'tonal':
       spec = {
         bg: { l: rng.range(0.94, 0.975), c: rng.range(0.02, 0.05), h: hue }, surfaceShift: -rng.range(0.03, 0.06),
-        ink: { l: 0.2, c: 0.04, h: hue }, accent: { l: rng.range(0.5, 0.62), c: rng.range(0.15, 0.22), h: hue },
-        accent2: { l: rng.range(0.72, 0.84), c: rng.range(0.1, 0.16), h: safeHue(hue + rng.pick([-25, 30, 45])) }, dark: false,
+        ink: { l: 0.2, c: 0.04, h: hue }, accent: { l: rng.range(0.5, 0.62), c: rng.range(0.12, 0.17), h: hue },
+        accent2: { l: rng.range(0.82, 0.9), c: rng.range(0.05, 0.09), h: safeHue(hue + rng.pick([-20, 0, 25])) }, dark: false,
       }
       break
     case 'complement':
       spec = {
         bg: { l: rng.range(0.93, 0.97), c: rng.range(0.015, 0.035), h: hue }, surfaceShift: rng.pick([-0.04, 0.03]),
-        ink: { l: 0.22, c: 0.035, h: inkH }, accent: { l: rng.range(0.55, 0.66), c: rng.range(0.17, 0.24), h: hue },
-        accent2: { l: rng.range(0.6, 0.78), c: rng.range(0.14, 0.2), h: off }, dark: false,
+        ink: { l: 0.22, c: 0.035, h: inkH }, accent: { l: rng.range(0.48, 0.58), c: rng.range(0.13, 0.19), h: hue },
+        accent2: { l: rng.range(0.8, 0.88), c: rng.range(0.06, 0.1), h: off }, dark: false,
       }
       break
     case 'earth': {
@@ -102,29 +104,29 @@ export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; h
       spec = {
         bg: { l: rng.range(0.9, 0.95), c: rng.range(0.03, 0.055), h: eh }, surfaceShift: -rng.range(0.04, 0.07),
         ink: { l: 0.24, c: 0.04, h: eh - 10 }, accent: { l: rng.range(0.5, 0.58), c: rng.range(0.15, 0.2), h: safeHue(rng.pick([28, 40, 140, 190, 350])) },
-        accent2: { l: rng.range(0.55, 0.7), c: rng.range(0.06, 0.1), h: safeHue(eh + rng.pick([-40, 60, 100])) }, dark: false,
+        accent2: { l: rng.range(0.78, 0.86), c: rng.range(0.05, 0.08), h: safeHue(eh + rng.pick([-20, 25, 40])) }, dark: false,
       }
       break
     }
     case 'dark':
       spec = {
         bg: { l: rng.range(0.15, 0.22), c: rng.range(0.015, 0.04), h: hue }, surfaceShift: 0.05,
-        ink: { l: 0.95, c: 0.02, h: hue }, accent: { l: rng.range(0.74, 0.86), c: rng.range(0.14, 0.2), h: safeHue(hue + rng.pick([0, 40, 180])) },
-        accent2: { l: rng.range(0.65, 0.78), c: rng.range(0.1, 0.16), h: off }, dark: true,
+        ink: { l: 0.95, c: 0.02, h: hue }, accent: { l: rng.range(0.7, 0.8), c: rng.range(0.09, 0.14), h: safeHue(hue + rng.pick([0, 40, 180])) },
+        accent2: { l: rng.range(0.3, 0.4), c: rng.range(0.05, 0.09), h: safeHue(hue + rng.pick([-20, 0, 20])) }, dark: true,
       }
       break
     case 'pop':
       spec = {
-        bg: { l: rng.range(0.82, 0.9), c: rng.range(0.1, 0.16), h: hue }, surfaceShift: 0.07,
-        ink: { l: 0.17, c: 0.04, h: hue }, accent: { l: rng.range(0.42, 0.52), c: rng.range(0.14, 0.2), h: off },
-        accent2: { l: rng.range(0.4, 0.5), c: rng.range(0.12, 0.17), h: safeHue(hue + 20) }, dark: false,
+        bg: { l: rng.range(0.9, 0.94), c: rng.range(0.025, 0.05), h: hue }, surfaceShift: 0.05,
+        ink: { l: 0.17, c: 0.04, h: hue }, accent: { l: rng.range(0.42, 0.52), c: rng.range(0.13, 0.17), h: off },
+        accent2: { l: rng.range(0.9, 0.95), c: rng.range(0.05, 0.09), h: safeHue(hue + rng.pick([-15, 15])) }, dark: false,
       }
       break
     default: // paper
       spec = {
         bg: { l: rng.range(0.955, 0.985), c: rng.range(0.008, 0.02), h: rng.pick([60, 85, 100, 20, 150]) }, surfaceShift: -0.035,
-        ink: { l: 0.16, c: 0.02, h: inkH }, accent: { l: rng.range(0.5, 0.6), c: rng.range(0.19, 0.25), h: hue },
-        accent2: { l: rng.range(0.78, 0.88), c: rng.range(0.12, 0.17), h: off }, dark: false,
+        ink: { l: 0.16, c: 0.02, h: inkH }, accent: { l: rng.range(0.46, 0.56), c: rng.range(0.14, 0.2), h: hue },
+        accent2: { l: rng.range(0.86, 0.92), c: rng.range(0.06, 0.1), h: safeHue(hue + rng.pick([-20, 20])) }, dark: false,
       }
   }
   const palette = buildPalette(spec)

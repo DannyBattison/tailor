@@ -22,7 +22,7 @@ const col = (children: DNode[], extra: Props = {}) => mk('box', { dir: 'col', ..
 const btnRow = (children: DNode[]) => mk('box', { dir: 'row', cols: children.map(() => 'auto').join(' '), gap: 0.6, keep: true, valign: 'center' }, children)
 const sec = (build: string, props: Props, children: DNode[]) => mk('section', { build, role: build.split('.')[0], ...props }, children)
 const img = (x: Ctx, ratio: string, extra: Props = {}) =>
-  mk('image', { art: x.rng.pick(x.c.art.length ? x.c.art : [...ART_KINDS]), seed: x.rng.int(1, 9999), tone: x.rng.int(0, 3), ratio, ...extra })
+  mk('image', { art: x.rng.pick(x.c.art.length ? x.c.art : [...ART_KINDS]), seed: x.rng.int(1, 9999), tone: x.rng.weighted<number>([[0, 4], [1, 4], [2, 1.5], [3, 1]]), ratio, ...extra })
 const flip = (x: Ctx, a: DNode, b: DNode): [DNode, DNode] => (x.rng.chance(0.5) ? [a, b] : [b, a])
 
 // ---------- marketing sections ----------
@@ -41,7 +41,7 @@ export const SECTIONS: Record<string, Builder> = {
   },
   'hero.giant': (x) =>
     sec('hero.giant', { pad: 'l', width: 'full' }, [
-      row('auto auto', [T(x.c.eyebrow), T(x.c.tags[1] ?? 'New', { variant: 'solid' })], { keep: true, gap: 0.5 }),
+      T(x.c.eyebrow),
       H(x.c.short, 'xxl', 1),
       row(x.rng.pick(['1fr 2fr', '2fr 1fr', '1fr 1fr']), x.rng.chance(0.5) ? [P(x.c.sub, { size: 'l' }), btnRow([B(x.c.cta, 'solid', { arrow: true }), B(x.c.ctaAlt, 'ghost')])] : [btnRow([B(x.c.cta, 'solid', { arrow: true })]), P(x.c.sub, { size: 'l' })], { gap: 2, valign: 'end' }),
     ]),
@@ -71,10 +71,11 @@ export const SECTIONS: Record<string, Builder> = {
     ]),
   'features.uneven': (x) => {
     const pattern = x.rng.pick([['2fr 1fr 1fr', 3], ['1fr 2fr 1fr', 3], ['3fr 2fr', 2], ['1fr 1fr 2fr', 3]] as [string, number][])
-    const bgs = x.rng.shuffle([undefined, 'accent', 'inverse', 'surface'])
+    // one loud card at most; the others stay quiet so the row isn't a rainbow
+    const bgs = x.rng.pick<(string | undefined)[]>([['inverse', 'surface', 'surface'], ['accent', 'surface', undefined], ['surface', 'inverse', undefined], [undefined, 'accent', undefined]])
     return sec('features.uneven', { pad: 'l' }, [
       row(x.rng.chance(0.5) ? '1fr 2fr' : '2fr 1fr', [H(x.rng.pick(['Three things we won\'t compromise on', 'What this is about', 'The short version']), 'l'), P(x.c.sub, { muted: true })], { gap: 2, valign: 'end' }),
-      row(pattern[0], x.c.features.slice(0, pattern[1]).map((f, i) => col([H(f.title, 's', 3), P(f.body, { muted: i !== 0 && bgs[i] === undefined })], { variant: 'card', bg: bgs[i], pad: 1.2, gap: 0.6, ...(i === 0 ? { minh: 220 } : {}) })), { gap: 1.2, valign: 'stretch' }),
+      row(pattern[0], x.c.features.slice(0, pattern[1]).map((f, i) => col([H(f.title, 's', 3), P(f.body, { muted: i !== 0 && bgs[i] === undefined })], { variant: 'card', bg: bgs[i], pad: 1.2, gap: 0.6, ...(i === 0 ? { minh: 150 } : {}) })), { gap: 1.2, valign: 'stretch' }),
     ])
   },
   'features.bento': (x) => {
@@ -84,9 +85,9 @@ export const SECTIONS: Record<string, Builder> = {
     const s = x.c.stats
     const q = x.c.quotes[0]
     const tiles: DNode[] = [
-      col([T(f[0].title, { variant: 'accent' }), H(f[0].body, 's', 3)], { variant: 'card', pad: 1.2, gap: 0.8, span: spans[0], bg: 'surface', minh: 190 }),
-      col([mk('stat', { value: s[0].value, label: s[0].label, size: 'l' })], { variant: 'card', pad: 1.2, span: spans[1], bg: 'accent', justify: 'between', minh: 190 }),
-      img(x, '4/3', { span: spans[2], minh: 190 }),
+      col([T(f[0].title, { variant: 'accent' }), H(f[0].body, 's', 3)], { variant: 'card', pad: 1.2, gap: 0.8, span: spans[0], bg: 'surface', minh: 150 }),
+      col([mk('stat', { value: s[0].value, label: s[0].label, size: 'l' })], { variant: 'card', pad: 1.2, span: spans[1], bg: 'accent', justify: 'between', minh: 150 }),
+      img(x, '4/3', { span: spans[2], minh: 150 }),
       img(x, '16/9', { span: spans2[0], shape: x.rng.pick([undefined, 'pill']) }),
       col([mk('quote', { text: q.text, who: q.who, size: 's' })], { variant: 'card', pad: 1.2, span: spans2[1], bg: 'inverse', justify: 'center' }),
     ]
@@ -104,7 +105,7 @@ export const SECTIONS: Record<string, Builder> = {
 
   'stats.row': (x) =>
     sec('stats.row', { pad: x.rng.pick(['s', 'm']), bg: x.rng.pick([undefined, 'surface', 'inverse']) }, [
-      row(4, x.c.stats.map((s) => col([mk('stat', { value: s.value, label: s.label, size: x.rng.pick(['m', 'l']) })], { variant: 'rule-top' })), { gap: 1.2, keep: false }),
+      row(4, x.c.stats.map((s) => col([mk('stat', { value: s.value, label: s.label, size: 'l' })], { variant: 'rule-top' })), { gap: 1.2, keep: false }),
     ]),
   'stats.big': (x) =>
     sec('stats.big', { pad: 'm', bg: x.rng.pick(['accent', 'inverse']) }, [

@@ -29,7 +29,12 @@ export function critique(doc: Doc): Issue[] {
   out.push(bad.length ? { id: 'font-banned', level: 'fail', title: 'Banned font', detail: `${bad.join(', ')} is a default-looking face.` } : { id: 'font-ok', level: 'pass', title: 'Fonts', detail: `${f.display} with ${f.body}: curated pairing.` })
 
   const hot = [t.palette.accent, t.palette.accent2].map(hexToOklch).filter((c) => c.c > 0.1 && isBannedHue(c.h))
-  out.push(hot.length ? { id: 'hue-banned', level: 'fail', title: 'Blue-to-purple accent', detail: 'The AI-default hue band (250–320°) is in use. Choose another hue unless it is deliberate.' } : { id: 'hue-ok', level: 'pass', title: 'Hue', detail: `Accent hue ${Math.round(hexToOklch(t.palette.accent).h)}° sits outside the blue→purple default.` })
+  out.push(hot.length ? { id: 'hue-banned', level: 'fail', title: 'Blue-to-purple accent', detail: 'The AI-default hue band (250–338°) is in use. Choose another hue unless it is deliberate.' } : { id: 'hue-ok', level: 'pass', title: 'Hue', detail: `Accent hue ${Math.round(hexToOklch(t.palette.accent).h)}° sits outside the blue→purple default.` })
+
+  const a1 = hexToOklch(t.palette.accent)
+  const a2 = hexToOklch(t.palette.accent2)
+  const dh = Math.min(Math.abs(a1.h - a2.h), 360 - Math.abs(a1.h - a2.h))
+  if (a2.c > 0.1 && dh > 60) out.push({ id: 'rainbow', level: 'warn', title: 'Competing accents', detail: 'Two strong colours from unrelated hues. Keep the second colour a muted tint of, or neighbour to, the first.' })
 
   const grey = [t.palette.bg, t.palette.ink, t.palette.surface].filter((h) => hexToOklch(h).c < 0.004)
   if (grey.length) out.push({ id: 'pure-grey', level: 'warn', title: 'Pure grey neutrals', detail: 'Neutrals carry no tint. Tint greys towards the dominant hue.' })

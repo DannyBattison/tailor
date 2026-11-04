@@ -3,8 +3,9 @@ import type { Tokens } from '../types'
 
 /** Token → CSS custom properties (set inline on the doc root, so many docs can coexist). */
 /** Fluid size for scale step n: clamp(min, a + b·cqw, max). Reaches `max` at a 1280px container and `min` at 390px. */
+const CAP: Record<number, number> = { 1: 22, 2: 28, 3: 40, 4: 64, 5: 84, 6: 168 }
 export function typeStep(t: Tokens, n: number) {
-  const max = 16 * t.scale ** n
+  const max = Math.min(17 * t.scale ** n, CAP[n] ?? 999)
   const min = n <= 0 ? max : Math.max(15, max * 0.5)
   const b = (max - min) / 8.9
   const a = min - 3.9 * b
@@ -22,7 +23,7 @@ export function tokenVars(t: Tokens): Record<string, string> {
     '--inverse': p.inverse, '--on-inverse': p.onInverse,
     '--f-display': f.display, '--f-body': f.body, '--f-mono': f.mono,
     '--w-display': String(getFont(t.fontId).displayWeight),
-    '--radius': `${t.radius}px`, '--bw': `${t.border}px`, '--shadow': shadow,
+    '--radius': `${t.radius}px`, '--radius-l': `${Math.min(t.radius, 22)}px`, '--bw': `${t.border}px`, '--shadow': shadow,
     '--d': String(t.density), '--track': `${t.tracking}em`, '--case': t.headingCase === 'none' ? 'none' : t.headingCase,
     '--fs-s': `calc(${step(0)} * 0.85)`, '--fs-m': step(0), '--fs-l': step(1), '--fs-3': step(2), '--fs-2': step(3),
     '--fs-1': step(4), '--fs-xxl': step(6),
@@ -40,7 +41,7 @@ export const DOC_CSS = `
 .d-doc h1,.d-doc h2,.d-doc h3,.d-doc p,.d-doc ul,.d-doc ol,.d-doc figure{margin:0}
 .d-doc a{color:inherit;text-decoration:none}
 .d-h{font-family:var(--f-display);font-weight:var(--w-display);letter-spacing:var(--track);text-transform:var(--case);line-height:1.04;text-wrap:balance}
-.d-h[data-size=xxl]{font-size:var(--fs-xxl);line-height:.92}
+.d-h[data-size=xxl]{font-size:var(--fs-xxl);line-height:.98}
 .d-h[data-size=xl]{font-size:var(--fs-1)}
 .d-h[data-size=l]{font-size:var(--fs-2)}
 .d-h[data-size=m]{font-size:var(--fs-3)}
@@ -68,10 +69,10 @@ export const DOC_CSS = `
 .d-box[data-bg=surface]{background:var(--surface)}
 .d-box[data-bg=accent]{background:var(--accent);color:var(--on-accent);--ink:var(--on-accent);--muted:color-mix(in oklab,var(--on-accent) 75%,transparent)}
 .d-box[data-bg=inverse]{background:var(--inverse);color:var(--on-inverse);--ink:var(--on-inverse);--muted:color-mix(in oklab,var(--on-inverse) 70%,transparent)}
-.d-box[data-variant=card]{border:var(--bw) solid var(--ink);border-radius:var(--radius);box-shadow:var(--shadow);background-color:var(--surface)}
+.d-box[data-variant=card]{border:var(--bw) solid var(--ink);border-radius:var(--radius-l);box-shadow:var(--shadow);background-color:var(--surface)}
 .d-box[data-variant=card][data-bg=accent]{background:var(--accent)}
 .d-box[data-variant=card][data-bg=inverse]{background:var(--inverse)}
-.d-box[data-variant=outline]{border:max(1px,var(--bw)) solid var(--line);border-radius:var(--radius)}
+.d-box[data-variant=outline]{border:max(1px,var(--bw)) solid var(--line);border-radius:var(--radius-l)}
 .d-box[data-variant=rule-top]{border-top:max(1px,var(--bw)) solid var(--ink);padding-top:calc(var(--space) * .6)}
 .d-box[data-variant=rule-left]{border-left:max(1px,var(--bw)) solid var(--ink);padding-left:calc(var(--space) * .8)}
 .d-box[data-sticky=true]{position:sticky;top:0;align-self:start}
@@ -82,22 +83,21 @@ export const DOC_CSS = `
 .d-btn[data-variant=ghost]{background:transparent;color:var(--ink);border-color:transparent;box-shadow:none;padding-inline:0;text-decoration:underline;text-underline-offset:.25em;text-decoration-thickness:1.5px}
 .d-btn[data-size=s]{font-size:var(--fs-s)}
 .d-btn[data-size=l]{font-size:var(--fs-l)}
-.d-btn[data-tilt=true]{transform:rotate(-1.5deg)}
-.d-img{position:relative;overflow:hidden;border-radius:var(--radius);border:var(--bw) solid var(--ink);background:var(--surface);width:100%;aspect-ratio:var(--ratio,4/3)}
-.d-img[data-shape=arch]{border-radius:999px 999px var(--radius) var(--radius)}
-.d-img[data-shape=pill]{border-radius:999px}
+.d-img{position:relative;overflow:hidden;border-radius:var(--radius-l);border:var(--bw) solid var(--ink);background:var(--surface);width:100%;aspect-ratio:var(--ratio,4/3)}
+.d-img[data-shape=arch]{border-radius:999px 999px var(--radius-l) var(--radius-l)}
+.d-img[data-shape=pill]{border-radius:999px;aspect-ratio:3/1}
 .d-img[data-shape=circle]{border-radius:50%}
 .d-img img.d-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .d-img .d-art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .d-img figcaption{position:absolute;left:8px;bottom:8px;background:var(--bg);color:var(--ink);font:var(--fs-s)/1.2 var(--f-mono);padding:3px 7px;border-radius:calc(var(--radius) / 2)}
-.d-nav{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space) * 1.2);padding:calc(var(--space) * .8) calc(var(--space) * 1.2);flex-wrap:wrap}
+.d-nav{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space) * 1.2);padding:calc(var(--space) * .8) max(calc(var(--space) * 1.2),calc((100cqw - var(--sw,1180px)) / 2));flex-wrap:wrap}
 .d-nav[data-border=true]{border-bottom:max(1px,var(--bw)) solid var(--ink)}
 .d-nav-brand{font-family:var(--f-display);font-weight:var(--w-display);font-size:var(--fs-l);letter-spacing:var(--track);text-transform:var(--case)}
-.d-nav-links{display:flex;gap:calc(var(--space) * 1);list-style:none;margin:0;padding:0;font-size:var(--fs-s);flex-wrap:wrap}
+.d-nav-links{display:flex;gap:calc(var(--space) * 1.1);list-style:none;margin:0;padding:0;font-size:var(--fs-m);flex-wrap:wrap}
 .d-nav[data-variant=centered]{flex-direction:column;text-align:center}
 .d-nav[data-variant=stacked]{flex-direction:column;align-items:flex-start;gap:calc(var(--space) * 1.6)}
 .d-nav[data-variant=stacked] .d-nav-links{flex-direction:column;gap:.7em;font-size:var(--fs-m)}
-.d-tag{display:inline-block;align-self:flex-start;font:600 var(--fs-s)/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;padding:.45em .8em;border:max(1px,var(--bw)) solid var(--ink);border-radius:calc(var(--radius) * .6);background:var(--accent2);color:var(--ink)}
+.d-tag{display:inline-block;align-self:flex-start;justify-self:start;font:600 var(--fs-s)/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;padding:.45em .8em;border:max(1px,var(--bw)) solid var(--ink);border-radius:calc(var(--radius) * .6);background:var(--accent2);color:var(--ink)}
 .d-tag[data-variant=solid]{background:var(--ink);color:var(--bg)}
 .d-tag[data-variant=plain]{background:transparent;border-color:var(--line)}
 .d-tag[data-variant=accent]{background:var(--accent);color:var(--on-accent)}
@@ -129,7 +129,7 @@ export const DOC_CSS = `
 .d-div[data-variant=thin]{border-top-color:var(--line)}
 .d-field{display:flex;flex-direction:column;gap:.35em;font-size:var(--fs-s)}
 .d-field label{font:600 var(--fs-s)/1.2 var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.d-field .d-control{padding:calc(.7em * var(--d)) .9em;border:max(1px,var(--bw)) solid var(--ink);border-radius:var(--radius);background:var(--bg);color:var(--muted);font-size:var(--fs-m);min-height:2.6em}
+.d-field .d-control{padding:calc(.7em * var(--d)) .9em;border:max(1px,var(--bw)) solid var(--ink);border-radius:var(--radius-l);background:var(--bg);color:var(--muted);font-size:var(--fs-m);min-height:2.6em}
 .d-field .d-toggle{width:3.2em;height:1.7em;border:max(1px,var(--bw)) solid var(--ink);border-radius:999px;background:var(--surface);position:relative}
 .d-field .d-toggle::after{content:'';position:absolute;top:.15em;left:.2em;width:1.1em;height:1.1em;border-radius:50%;background:var(--ink)}
 .d-field .d-toggle[data-on=true]{background:var(--accent)}
@@ -156,11 +156,7 @@ export const DOC_CSS = `
 .d-doc[data-sig=ruled] .d-sec:first-child{border-top:0}
 .d-doc[data-sig=ruled] .d-h{border-bottom:max(2px,var(--bw)) solid var(--ink);padding-bottom:.15em}
 .d-doc[data-sig=grain]::after{content:'';position:absolute;inset:0;background-image:${GRAIN};opacity:.22;pointer-events:none;mix-blend-mode:multiply;z-index:5}
-.d-doc[data-sig=tilted] .d-tag{transform:rotate(-3deg)}
-.d-doc[data-sig=tilted] .d-box[data-variant=card]:nth-child(odd){transform:rotate(-.8deg)}
-.d-doc[data-sig=tilted] .d-box[data-variant=card]:nth-child(even){transform:rotate(.6deg)}
-.d-doc[data-sig=tilted] .d-btn{transform:rotate(-1.5deg)}
-.d-doc[data-sig=tilted] .d-img:nth-of-type(odd){transform:rotate(1.2deg)}
+.d-doc[data-sig=tilted] .d-tag{transform:rotate(-2deg)}
 /* responsive: container queries on the frame so the canvas viewport toggle works */
 @container doc (max-width: 900px){
   .d-box[data-dir=row]:not([data-keep=true]),.d-box[data-dir=grid]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
@@ -173,6 +169,7 @@ export const DOC_CSS = `
 @container doc (max-width: 560px){
   .d-box[data-dir=grid]{grid-template-columns:minmax(0,1fr) !important}
   .d-nav-links{display:none}
+  .d-nav{padding-inline:calc(var(--space) * 1.2)}
   .d-nav[data-variant=stacked] .d-nav-links{display:flex}
   .d-table th:nth-child(n+4),.d-table td:nth-child(n+4){display:none}
   .d-marquee{font-size:var(--fs-l)}

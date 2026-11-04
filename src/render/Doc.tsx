@@ -24,7 +24,7 @@ export function placeholdUrl(p: Props, t?: Tokens, w = 1200): string {
   return `https://placehold.co/${w}x${h}/${bg.slice(1)}/${fg.slice(1)}?text=${encodeURIComponent(text).replace(/%20/g, '+')}`
 }
 
-const PAD: Record<string, number> = { none: 0, s: 1.4, m: 2.4, l: 3.6, xl: 5.2 }
+const PAD: Record<string, number> = { none: 0, s: 1.1, m: 1.8, l: 2.6, xl: 3.6 }
 
 function tpl(cols: unknown): string | undefined {
   if (typeof cols === 'number') return `repeat(${cols}, minmax(0,1fr))`
