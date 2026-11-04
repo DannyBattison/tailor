@@ -1,6 +1,6 @@
 import { hexToOklch } from './lib/color'
-import { paletteFromSwatches } from './gen/palette'
-import type { Palette } from './types'
+import { DEFAULT_BG_BOLD, applyBgBold, buildPalette, specFromSwatches } from './gen/palette'
+import type { Palette, PaletteSpec } from './types'
 
 /** Canvas quantisation: bucket pixels at 4 bits/channel, merge near buckets, return top swatches. */
 export async function extractSwatches(file: File | Blob, count = 6): Promise<{ hex: string; share: number }[]> {
@@ -43,8 +43,9 @@ export async function extractSwatches(file: File | Blob, count = 6): Promise<{ h
   }
 }
 
-export async function paletteFromImage(file: File | Blob): Promise<{ palette: Palette; swatches: string[]; hue: number }> {
+export async function paletteFromImage(file: File | Blob, bgBold = DEFAULT_BG_BOLD): Promise<{ palette: Palette; spec: PaletteSpec; swatches: string[]; hue: number }> {
   const sw = await extractSwatches(file)
-  const palette = paletteFromSwatches(sw)
-  return { palette, swatches: sw.map((s) => s.hex), hue: hexToOklch(palette.accent).h }
+  const spec = specFromSwatches(sw)
+  const palette = buildPalette(applyBgBold(spec, bgBold))
+  return { palette, spec, swatches: sw.map((s) => s.hex), hue: hexToOklch(palette.accent).h }
 }

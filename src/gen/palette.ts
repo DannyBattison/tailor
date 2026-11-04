@@ -1,6 +1,6 @@
-import { clampGamut, contrast, ensureContrast, hexToOklch, mix, textOn, toHex, type Lch } from '../lib/color'
+import { clampGamut, contrast, ensureContrast, hexToOklch, mix, textOn, toHex } from '../lib/color'
 import type { Rng } from '../lib/rng'
-import type { Palette } from '../types'
+import type { Palette, PaletteSpec } from '../types'
 
 /** Blue→purple band that reads as "default AI gradient" — avoided unless explicitly chosen. */
 export const BANNED_HUE: [number, number] = [250, 338]
@@ -15,13 +15,15 @@ export function safeHue(h: number): number {
 
 export type Strategy = 'tonal' | 'complement' | 'earth' | 'dark' | 'pop' | 'paper'
 
-export interface PaletteSpec {
-  bg: Lch
-  surfaceShift: number
-  ink: Lch
-  accent: Lch
-  accent2: Lch
-  dark: boolean
+export type { PaletteSpec }
+
+export const DEFAULT_BG_BOLD = 0.2
+
+/** Fade the background from quiet (near-neutral, barely tinted) up to the spec's full colour. */
+export function applyBgBold(spec: PaletteSpec, bold: number): PaletteSpec {
+  const t = Math.min(1, Math.max(0, bold))
+  const quietL = spec.dark ? 0.17 : 0.975
+  return { ...spec, bg: { h: spec.bg.h, c: 0.008 + (spec.bg.c - 0.008) * t, l: quietL + (spec.bg.l - quietL) * t } }
 }
 
 /** Turn loose colour intent into a contrast-checked palette. */
@@ -71,9 +73,10 @@ export interface PaletteOpts {
   strategy?: Strategy
   hueRange?: [number, number]
   darkChance?: number
+  bgBold?: number
 }
 
-export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; hue: number; strategy: Strategy } {
+export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; hue: number; strategy: Strategy; spec: PaletteSpec } {
   const strategy: Strategy =
     o.strategy ??
     rng.weighted<Strategy>([
@@ -129,12 +132,12 @@ export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; h
         accent2: { l: rng.range(0.86, 0.92), c: rng.range(0.06, 0.1), h: safeHue(hue + rng.pick([-20, 20])) }, dark: false,
       }
   }
-  const palette = buildPalette(spec)
-  return { palette, hue: hexToOklch(palette.accent).h, strategy }
+  const palette = buildPalette(applyBgBold(spec, o.bgBold ?? DEFAULT_BG_BOLD))
+  return { palette, hue: hexToOklch(palette.accent).h, strategy, spec }
 }
 
 /** Palette from sampled image colours (see imagePalette.ts). */
-export function paletteFromSwatches(sw: { hex: string; share: number }[]): Palette {
+export function specFromSwatches(sw: { hex: string; share: number }[]): PaletteSpec {
   const lch = sw.map((s) => ({ ...hexToOklch(s.hex), share: s.share }))
   const chroma = lch.slice().sort((a, b) => b.c * Math.sqrt(b.share) - a.c * Math.sqrt(a.share))
   const lightest = lch.slice().sort((a, b) => b.l - a.l)[0]
@@ -142,12 +145,12 @@ export function paletteFromSwatches(sw: { hex: string; share: number }[]): Palet
   const accent = chroma[0]
   const second = chroma.find((c) => Math.abs(c.h - accent.h) > 30 && c.c > 0.05) ?? chroma[1] ?? accent
   const dark = lightest.l < 0.6
-  return buildPalette({
+  return {
     bg: dark ? { l: Math.max(0.16, darkest.l * 0.8), c: Math.min(0.04, darkest.c), h: darkest.h } : { l: 0.955, c: Math.min(0.035, Math.max(0.012, lightest.c)), h: lightest.c > 0.01 ? lightest.h : accent.h },
     surfaceShift: -0.04,
     ink: dark ? { l: 0.95, c: 0.02, h: lightest.h } : { l: 0.2, c: Math.min(0.04, darkest.c + 0.01), h: darkest.c > 0.01 ? darkest.h : accent.h },
     accent: { l: accent.l, c: Math.max(0.1, accent.c), h: accent.h },
     accent2: { l: second.l, c: Math.max(0.08, second.c), h: second.h },
     dark,
-  })
+  }
 }

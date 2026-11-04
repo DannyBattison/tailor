@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { walk, updateProps } from '../lib/tree'
 import { FONT_PAIRS, getFont } from '../gen/fonts'
 import { withSignature } from '../gen/generate'
-import { paletteIssues } from '../gen/palette'
+import { applyBgBold, buildPalette, paletteIssues } from '../gen/palette'
 import { paletteFromImage } from '../imagePalette'
 import { contrast, hexToOklch } from '../lib/color'
 import { mutate, toast, useStore } from '../store'
@@ -22,7 +22,7 @@ export function Design() {
     const fixOn = (bg: string) => (contrast('#111111', bg) >= contrast('#ffffff', bg) ? '#111111' : '#ffffff')
     if (k === 'accent') { p.onAccent = fixOn(hex); p.accentText = contrast(hex, p.bg) >= 4.5 ? hex : p.ink }
     if (k === 'inverse') p.onInverse = fixOn(hex)
-    mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: p, hue: k === 'accent' ? hexToOklch(hex).h : d.tokens.hue, paletteStrategy: 'manual' } }), 'pal-' + k)
+    mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: p, hue: k === 'accent' ? hexToOklch(hex).h : d.tokens.hue, paletteStrategy: 'manual', spec: undefined } }), 'pal-' + k)
   }
   const setImages = (source?: string) => mutate((d) => {
     let root = d.root
@@ -31,6 +31,7 @@ export function Design() {
     for (const id of ids) root = updateProps(root, id, { source })
     return { ...d, root }
   })
+  const setBold = (v: number) => mutate((d) => (d.tokens.spec ? { ...d, tokens: { ...d.tokens, bgBold: v, palette: buildPalette(applyBgBold(d.tokens.spec, v)) } } : d), 'bgbold')
   const issues = paletteIssues(t.palette)
   const slider = (label: string, key: keyof Tokens, min: number, max: number, step: number, fmt: (v: number) => string = String) => (
     <div className="field">
@@ -50,12 +51,17 @@ export function Design() {
           </label>
         ))}
       </div>
+      <div className="field">
+        <label>Background boldness <em>{t.spec ? Math.round((t.bgBold ?? 0) * 100) + '%' : 'n/a'}</em></label>
+        <input type="range" min={0} max={1} step={0.05} disabled={!t.spec} value={t.bgBold ?? 0} onChange={(e) => setBold(+e.target.value)} />
+        <span className="hint">{t.spec ? 'Quiet paper on the left, the palette\'s full background colour on the right.' : 'Palette was edited by hand. Re-roll or load from an image to use this.'}</span>
+      </div>
       {issues.map((i) => <p key={i} className="warn">⚠ {i}</p>)}
       <button onClick={() => file.current?.click()}>Palette from image…</button>
       <input ref={file} type="file" accept="image/*" hidden onChange={async (e) => {
         const f = e.target.files?.[0]; e.target.value = ''
         if (!f) return
-        try { const r = await paletteFromImage(f); mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, hue: r.hue, paletteStrategy: 'image' } })) } catch (er) { toast((er as Error).message) }
+        try { const r = await paletteFromImage(f, doc.tokens.bgBold); mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, spec: r.spec, hue: r.hue, paletteStrategy: 'image' } })) } catch (er) { toast((er as Error).message) }
       }} />
 
       <label className="lbl">Images</label>

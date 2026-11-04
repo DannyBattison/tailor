@@ -60,6 +60,7 @@ export function designSystem(doc: Doc) {
     mood: doc.meta.mood,
     seed: doc.meta.seed,
     colors,
+    backgroundBoldness: doc.tokens.bgBold ?? null,
     contrast: [pair('ink', 'bg'), pair('muted', 'bg'), pair('onAccent', 'accent'), pair('accentText', 'bg'), pair('onInverse', 'inverse')],
     typography: {
       display: { family: f.display, weight: f.displayWeight, stack: stacks.display, case: t.headingCase, letterSpacing: `${t.tracking}em`, lineHeight: 1.04 },

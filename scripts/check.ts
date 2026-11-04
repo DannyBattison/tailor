@@ -62,3 +62,21 @@ import { genTokens } from '../src/gen/tokens'
   if (bad) { console.log('FAIL reroll semantics', { ok2, sameTok, hasBand, gone }); process.exit(1) }
   console.log('re-roll semantics ok')
 }
+
+// background boldness: quiet by default, bolder when asked, contrast always holds
+import { applyBgBold, buildPalette, paletteIssues as issues2 } from '../src/gen/palette'
+import { hexToOklch } from '../src/lib/color'
+{
+  let fails = 0
+  for (let s = 1; s <= 60; s++) {
+    const d = generate({ seed: s * 17, kind: 'marketing', mood: '', brief: '' })
+    if (!d.tokens.spec) { console.log('FAIL spec missing'); process.exit(1) }
+    const quiet = buildPalette(applyBgBold(d.tokens.spec, 0))
+    const bold = buildPalette(applyBgBold(d.tokens.spec, 1))
+    if (hexToOklch(quiet.bg).c > 0.03) fails++
+    if (issues2(quiet).length || issues2(bold).length) fails++
+    if (hexToOklch(d.tokens.palette.bg).c > 0.04) fails++ // default is quiet
+  }
+  if (fails) { console.log('FAIL bg boldness', fails); process.exit(1) }
+  console.log('bg boldness ok')
+}

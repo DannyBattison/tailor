@@ -22,8 +22,8 @@ export function Generate() {
   async function onImage(f?: File) {
     if (!f) return
     try {
-      const r = await paletteFromImage(f)
-      mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, hue: r.hue, paletteStrategy: 'image' } }))
+      const r = await paletteFromImage(f, doc.tokens.bgBold)
+      mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, spec: r.spec, hue: r.hue, paletteStrategy: 'image' } }))
       setUI({ locks: { ...ui.locks, palette: true } })
       toast('Palette taken from your image, contrast-corrected. Palette is now locked.')
     } catch (e) {

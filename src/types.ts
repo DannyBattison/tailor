@@ -25,6 +25,15 @@ export interface Palette {
   onInverse: string
 }
 
+export interface PaletteSpec {
+  bg: { l: number; c: number; h: number }
+  surfaceShift: number
+  ink: { l: number; c: number; h: number }
+  accent: { l: number; c: number; h: number }
+  accent2: { l: number; c: number; h: number }
+  dark: boolean
+}
+
 export type ShadowKind = 'none' | 'soft' | 'hard'
 export type Signature = 'hardShadow' | 'oversized' | 'ruled' | 'grain' | 'tilted' | 'inverted' | 'marquee'
 export type HeadingCase = 'none' | 'uppercase' | 'lowercase'
@@ -47,6 +56,10 @@ export interface FontPair {
 export interface Tokens {
   palette: Palette
   paletteStrategy: string
+  /** the palette's full-strength colour intent; bgBold blends the background between quiet and this */
+  spec?: PaletteSpec
+  /** 0 = near-neutral paper (or near-black), 1 = the strategy's full background colour */
+  bgBold?: number
   hue: number
   fontId: string
   radius: number
