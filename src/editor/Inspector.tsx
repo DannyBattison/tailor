@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { aiReady } from '../ai'
-import { aiRewriteSection, deleteSelected, duplicateSelected, nudgeSelected, regenSelectedSection, setProps } from '../actions'
+import { aiRewriteSection, deleteSelected, duplicateSelected, nudgeSelected, setProps } from '../actions'
 import { find, findParent, nearestSection } from '../lib/tree'
 import { setUI, useStore } from '../store'
 import type { DNode } from '../types'
@@ -71,8 +71,7 @@ export function Inspector() {
       ))}
       {sec && (
         <div className="scoped">
-          <label className="lbl">Section: {String(sec.props.build ?? 'custom')}</label>
-          <button onClick={regenSelectedSection}>Re-roll this section only</button>
+          <label className="lbl">Section: {String(sec.props.build ?? 'custom')} <span className="hint">· re-roll it from the Generate tab</span></label>
           <div className="row2">
             <input placeholder="make it more… (e.g. blunt, warmer)" value={instr} onChange={(e) => setInstr(e.target.value)} />
             <button disabled={!aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) || !!ui.busy} onClick={() => aiRewriteSection(instr ? `Make it more ${instr}.` : 'Rewrite the copy so it is more specific and less generic.')}>Rewrite</button>

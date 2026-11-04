@@ -67,6 +67,7 @@ export interface Meta {
   mood: string
   archetype: string
   layoutSeed: number
+  contentSeed?: number
   siteKind: string
   brief: string
   name: string
@@ -84,5 +85,8 @@ export interface Locks {
   palette: boolean
   fonts: boolean
   shape: boolean
+  rhythm: boolean
+  signature: boolean
   layout: boolean
+  copy: boolean
 }

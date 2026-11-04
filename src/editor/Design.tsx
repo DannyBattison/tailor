@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { walk, updateProps } from '../lib/tree'
-import { rerollPart } from '../actions'
 import { FONT_PAIRS, getFont } from '../gen/fonts'
+import { withSignature } from '../gen/generate'
 import { paletteIssues } from '../gen/palette'
 import { paletteFromImage } from '../imagePalette'
 import { contrast, hexToOklch } from '../lib/color'
@@ -40,6 +40,7 @@ export function Design() {
   )
   return (
     <div className="panel-body">
+      <p className="hint">Fine-tune by hand here. To re-roll anything, use the Generate tab.</p>
       <label className="lbl">Palette <em>{t.paletteStrategy}</em></label>
       <div className="swatches">
         {SWATCHES.map(([k, l]) => (
@@ -50,10 +51,7 @@ export function Design() {
         ))}
       </div>
       {issues.map((i) => <p key={i} className="warn">⚠ {i}</p>)}
-      <div className="row2">
-        <button onClick={() => rerollPart('palette')}>Re-roll palette</button>
-        <button onClick={() => file.current?.click()}>From image…</button>
-      </div>
+      <button onClick={() => file.current?.click()}>Palette from image…</button>
       <input ref={file} type="file" accept="image/*" hidden onChange={async (e) => {
         const f = e.target.files?.[0]; e.target.value = ''
         if (!f) return
@@ -72,7 +70,6 @@ export function Design() {
         {FONT_PAIRS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
       </select>
       <p className="meta">{getFont(t.fontId).tags.join(' · ')}</p>
-      <button onClick={() => rerollPart('fonts')}>Re-roll fonts</button>
 
       <label className="lbl">Shape &amp; rhythm</label>
       {slider('Roundness', 'radius', 0, 40, 1, (v) => (v >= 40 ? 'pill' : v + 'px'))}
@@ -85,8 +82,7 @@ export function Design() {
       <div className="field"><label>Heading case</label>
         <select value={t.headingCase} onChange={(e) => set({ headingCase: e.target.value as Tokens['headingCase'] }, 'case')}><option value="none">as written</option><option value="uppercase">UPPERCASE</option><option value="lowercase">lowercase</option></select></div>
       <div className="field"><label>Signature move</label>
-        <select value={t.signature} onChange={(e) => set({ signature: e.target.value as Signature }, 'sig')}>{SIGS.map((s) => <option key={s}>{s}</option>)}</select></div>
-      <button onClick={() => rerollPart('shape')}>Re-roll shape</button>
+        <select value={t.signature} onChange={(e) => mutate((d) => withSignature(d, e.target.value as Signature))}>{SIGS.map((s) => <option key={s}>{s}</option>)}</select></div>
     </div>
   )
 }

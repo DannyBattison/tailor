@@ -4,9 +4,6 @@ import { FONT_PAIRS } from './fonts'
 import { MOODS } from './moods'
 import { genPalette } from './palette'
 
-export type TokenParts = Pick<Tokens, 'palette' | 'paletteStrategy' | 'hue'> & Pick<Tokens, 'fontId'> &
-  Pick<Tokens, 'radius' | 'border' | 'shadow' | 'density' | 'scale' | 'headingCase' | 'tracking' | 'signature'>
-
 export function genPaletteTokens(seed: number, mood: string) {
   const rng = stageRng(seed, 'palette')
   const m = MOODS[mood] ?? MOODS.editorial
@@ -42,12 +39,29 @@ export function genShape(seed: number, mood: string) {
   }
 }
 
-/** Generate tokens; locked parts are copied from `prev`. */
+/** Signature moves imply shape constraints (hard shadow needs a border, ruled needs rules). */
+export function fixSignature(t: Tokens): Tokens {
+  if (t.signature === 'hardShadow') return { ...t, shadow: 'hard', border: Math.max(2, t.border) }
+  if (t.signature === 'ruled') return { ...t, border: Math.max(1.5, t.border) }
+  return t
+}
+
+/** Generate tokens; locked parts are copied from `prev`. Shape, rhythm and signature are locked independently. */
 export function genTokens(seed: number, mood: string, prev?: Tokens, locks?: Partial<Locks>): Tokens {
-  const pal = prev && locks?.palette ? { palette: prev.palette, hue: prev.hue, paletteStrategy: prev.paletteStrategy } : genPaletteTokens(seed, mood)
-  const fontId = prev && locks?.fonts ? prev.fontId : genFontId(seed, mood)
-  const shape = prev && locks?.shape
-    ? { radius: prev.radius, border: prev.border, shadow: prev.shadow, density: prev.density, scale: prev.scale, headingCase: prev.headingCase, tracking: prev.tracking, signature: prev.signature }
-    : genShape(seed, mood)
-  return { ...pal, fontId, ...shape }
+  const keep = (k: keyof Locks) => !!prev && !!locks?.[k]
+  const pal = keep('palette') ? { palette: prev!.palette, hue: prev!.hue, paletteStrategy: prev!.paletteStrategy } : genPaletteTokens(seed, mood)
+  const fontId = keep('fonts') ? prev!.fontId : genFontId(seed, mood)
+  const g = genShape(seed, mood)
+  const t: Tokens = {
+    ...pal, fontId,
+    radius: keep('shape') ? prev!.radius : g.radius,
+    border: keep('shape') ? prev!.border : g.border,
+    shadow: keep('shape') ? prev!.shadow : g.shadow,
+    density: keep('rhythm') ? prev!.density : g.density,
+    scale: keep('rhythm') ? prev!.scale : g.scale,
+    headingCase: keep('rhythm') ? prev!.headingCase : g.headingCase,
+    tracking: keep('rhythm') ? prev!.tracking : g.tracking,
+    signature: keep('signature') ? prev!.signature : g.signature,
+  }
+  return fixSignature(t)
 }

@@ -44,3 +44,21 @@ import { placeholdUrl } from '../src/render/Doc'
   if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
   console.log('design system + placehold ok')
 }
+
+// partial re-rolls: locks hold, signature swap is reversible
+import { withSignature } from '../src/gen/generate'
+import { genTokens } from '../src/gen/tokens'
+{
+  const d = generate({ seed: 11, kind: 'marketing', mood: '', brief: '' })
+  const locked = { palette: true, fonts: true, shape: true, rhythm: true, signature: true }
+  const t = genTokens(999, d.meta.mood, d.tokens, { ...locked, fonts: false })
+  const ok2 = JSON.stringify({ ...t, fontId: 0 }) === JSON.stringify({ ...d.tokens, fontId: 0 })
+  const lay = generate({ seed: d.meta.seed, kind: 'marketing', mood: d.meta.mood, brief: '', archetype: 'index', layoutSeed: 5, siteKind: d.meta.siteKind, prev: d, locks: { ...locked, layout: false, copy: true } })
+  const sameTok = JSON.stringify(lay.tokens) === JSON.stringify(d.tokens)
+  const withBand = withSignature(d, 'marquee')
+  const hasBand = JSON.stringify(withBand.root).includes('"sigBand":true') || JSON.stringify(d.root).includes('"marquee"')
+  const gone = !JSON.stringify(withSignature(withBand, 'grain').root).includes('sigBand')
+  const bad = !ok2 || !sameTok || lay.meta.seed !== d.meta.seed || lay.meta.siteKind !== d.meta.siteKind || !hasBand || !gone
+  if (bad) { console.log('FAIL reroll semantics', { ok2, sameTok, hasBand, gone }); process.exit(1) }
+  console.log('re-roll semantics ok')
+}

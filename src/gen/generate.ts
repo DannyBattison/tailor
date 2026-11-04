@@ -1,11 +1,11 @@
 import { makeRng, stageRng } from '../lib/rng'
 import { find, mk, walk } from '../lib/tree'
-import type { DNode, Doc, Kind, Locks, Meta } from '../types'
+import type { DNode, Doc, Kind, Locks, Meta, Signature } from '../types'
 import { ALL_ARCHETYPES, SECTIONS, archetypesFor, roleOf, variantsOf, type Ctx } from './build'
 import { APPS, MARKETING, type AppContent, type MarketingContent } from './content'
 import { sigOf, tooClose, type Sig } from './guard'
 import { MOOD_NAMES, inferFromText } from './moods'
-import { genTokens } from './tokens'
+import { fixSignature, genTokens } from './tokens'
 
 export interface GenOpts {
   seed: number
@@ -13,6 +13,8 @@ export interface GenOpts {
   mood: string // '' = infer from brief / seed
   brief: string
   archetype?: string
+  layoutSeed?: number
+  contentSeed?: number
   locks?: Partial<Locks>
   prev?: Doc
   override?: Record<string, any>
@@ -43,19 +45,22 @@ export function contentFor(kind: Kind, siteKind: string, seed: number, override?
 export function generate(o: GenOpts): Doc {
   const locks = o.locks ?? {}
   const prev = o.prev
+  const same = prev && prev.meta.kind === o.kind ? prev : undefined // layout and copy only carry over within a kind
   const inf = inferFromText(o.brief, o.kind)
   const mood = o.mood || inf.mood || makeRng(o.seed).pick(MOOD_NAMES)
-  const siteKind = o.siteKind || (inf.kind === o.kind ? inf.siteKind : '') || ''
+  const siteKind = o.siteKind || (inf.kind === o.kind ? inf.siteKind : '') || (locks.copy && same ? same.meta.siteKind : '')
   const tokens = genTokens(o.seed, mood, prev?.tokens, locks)
   if (o.kind === 'app' && tokens.signature === 'marquee') tokens.signature = 'hardShadow' // marquee copy is marketing-only
-  const layoutSeed = locks.layout && prev ? prev.meta.layoutSeed : o.seed
+  const layoutSeed = o.layoutSeed ?? (locks.layout && same ? same.meta.layoutSeed : o.seed)
   const pool = archetypesFor(o.kind)
-  const archetype = o.archetype ?? (locks.layout && prev && pool.some((a) => a.id === prev.meta.archetype) ? prev.meta.archetype : stageRng(o.seed, 'archetype').pick(pool).id)
+  const archetype = o.archetype ?? (locks.layout && same && pool.some((a) => a.id === same.meta.archetype) ? same.meta.archetype : stageRng(o.seed, 'archetype').pick(pool).id)
   const arch = ALL_ARCHETYPES.find((a) => a.id === archetype) ?? pool[0]
-  const cont = contentFor(o.kind, siteKind || (locks.layout && prev ? prev.meta.siteKind : ''), layoutSeed, o.override ?? (locks.layout ? prev?.meta.override : undefined))
+  const contentSeed = o.contentSeed ?? (locks.copy && same ? same.meta.contentSeed ?? same.meta.layoutSeed : o.seed)
+  const override = o.override ?? (locks.copy ? same?.meta.override : undefined)
+  const cont = contentFor(o.kind, siteKind, contentSeed, override)
   const x: Ctx = { rng: stageRng(layoutSeed, 'layout:' + arch.id), t: tokens, c: cont.c, a: cont.a }
   const children = postProcess(arch.build(x), x)
-  const meta: Meta = { seed: o.seed, kind: o.kind, mood, archetype: arch.id, layoutSeed, siteKind: cont.siteKind, brief: o.brief, name: o.kind === 'app' ? cont.a.name : cont.c.name, override: o.override ?? (locks.layout ? prev?.meta.override : undefined) }
+  const meta: Meta = { seed: o.seed, kind: o.kind, mood, archetype: arch.id, layoutSeed, contentSeed, siteKind: cont.siteKind, brief: o.brief, name: o.kind === 'app' ? cont.a.name : cont.c.name, override }
   return { root: mk('page', {}, children), tokens, meta }
 }
 
@@ -67,6 +72,7 @@ function postProcess(nodes: DNode[], x: Ctx): DNode[] {
   if (sig === 'marquee' && x.c && !hasType(page, 'marquee')) {
     const at = out.findIndex((n) => n.type === 'section' || n.type === 'box')
     const band = SECTIONS['marquee.band'](x)
+    band.props.sigBand = true
     if (x.t.signature === 'marquee' && out[0]?.type === 'box') {
       // sidebar layouts: place the band inside the main column instead
       const main = out[0].children[out[0].children.length - 1]
@@ -79,7 +85,7 @@ function postProcess(nodes: DNode[], x: Ctx): DNode[] {
       if (n.type === 'section' && !['nav', 'footer', 'marquee'].includes(n.props.role) && !String(n.props.build).startsWith('hero') && n.props.bg !== 'inverse' && !String(n.props.build).startsWith('app.topbar')) cands.push(n)
     })
     const pick = cands.length ? cands[Math.floor(cands.length / 2)] : null
-    if (pick) pick.props = { ...pick.props, bg: 'inverse' }
+    if (pick) pick.props = { ...pick.props, bg: 'inverse', sigInverted: true }
   }
   return out
 }
@@ -114,9 +120,24 @@ export function regenSection(doc: Doc, sectionId: string, seed: number): DNode |
   const alts = variantsOf(roleOf(build))
   const rng = makeRng(seed)
   const pickKey = alts.length > 1 ? rng.pick(alts.filter((k) => k !== build)) : build
-  const cont = contentFor(doc.meta.kind, doc.meta.siteKind, doc.meta.layoutSeed, doc.meta.override)
+  const cont = contentFor(doc.meta.kind, doc.meta.siteKind, doc.meta.contentSeed ?? doc.meta.layoutSeed, doc.meta.override)
   const x: Ctx = { rng, t: doc.tokens, c: cont.c, a: cont.a }
   const next = SECTIONS[pickKey](x)
   if (old.props.bg === 'inverse' && next.type === 'section') next.props.bg = 'inverse'
   return next
+}
+
+/** Swap the signature move without rebuilding: updates tokens and adds/removes the marquee band or inverted section. */
+export function withSignature(doc: Doc, sig: Signature): Doc {
+  if (doc.meta.kind === 'app' && sig === 'marquee') sig = 'hardShadow'
+  const tokens = fixSignature({ ...doc.tokens, signature: sig })
+  const strip = (n: DNode): DNode => {
+    const props = { ...n.props }
+    if (props.sigInverted) { delete props.bg; delete props.sigInverted }
+    return { ...n, props, children: n.children.filter((c) => !c.props.sigBand).map(strip) }
+  }
+  const clean = strip(doc.root)
+  const cont = contentFor(doc.meta.kind, doc.meta.siteKind, doc.meta.contentSeed ?? doc.meta.layoutSeed, doc.meta.override)
+  const x: Ctx = { rng: stageRng(doc.meta.layoutSeed, 'sig:' + sig), t: tokens, c: cont.c, a: cont.a }
+  return { ...doc, tokens, root: { ...clean, children: postProcess(clean.children, x) } }
 }

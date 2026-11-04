@@ -25,11 +25,12 @@ export function Art({ kind, seed, tone = 0 }: { kind: ArtKind; seed: number; ton
       shapes.push(<rect key={i} x={r.int(-20, W - 60)} y={r.int(-20, H - 50)} width={w} height={h} fill={c(i)} rx={r.chance(0.3) ? w / 2 : 0} />)
     }
   } else if (kind === 'stripes') {
-    const n = r.int(6, 14)
+    const w = W / r.int(6, 14)
     const ang = r.pick([0, 0, 90, -30, 45])
-    for (let i = 0; i < n; i++) {
-      if (r.chance(0.35)) continue
-      shapes.push(<rect key={i} x={(i * 2 * W) / n - W / 2} y={-300} width={W / n} height={900} fill={c(i)} transform={`rotate(${ang} 200 150)`} />)
+    // cover the whole rotated viewBox; never skip every third stripe so the art can't come out empty
+    for (let i = 0, x = -150; x < 550; i++, x += 2 * w) {
+      if (i % 3 !== 0 && r.chance(0.3)) continue
+      shapes.push(<rect key={i} x={x} y={-300} width={w} height={900} fill={c(i)} transform={`rotate(${ang} 200 150)`} />)
     }
   } else if (kind === 'arches') {
     const n = r.int(3, 5)
