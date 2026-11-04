@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { aiReady } from '../ai'
 import { aiGenerate, applySeed, makeVariants, newDocFromScratch, pickVariant, reroll } from '../actions'
 import { MOOD_NAMES } from '../gen/moods'
 import { paletteFromImage } from '../imagePalette'
@@ -38,7 +39,7 @@ export function Generate() {
       </select>
       <label className="lbl">Brief <span className="hint">keywords steer mood and content; no key needed</span></label>
       <textarea rows={3} value={ui.brief} placeholder="e.g. a small coffee roaster in Hobart, warm, a bit nerdy" onChange={(e) => setUI({ brief: e.target.value })} />
-      <p className="callout">The brief steers two things. Without a key, keywords pick a mood and a content set (e.g. "coffee" → warm + café copy). With a key, Claude writes the headline, features, stats and quotes from it. Colours, fonts, shapes and layout are never decided by the model.</p>
+      <p className="callout">The brief steers two things. Without a key, keywords pick a mood and a content set (e.g. "coffee" → warm + café copy). With an AI provider (your API key, or the Claude Code / Codex you already have installed in the desktop app), it writes the headline, features, stats and quotes from it. Colours, fonts, shapes and layout are never decided by the model.</p>
       <label className="lbl">Seed</label>
       <div className="row2">
         <input type="number" value={ui.seed} onChange={(e) => setUI({ seed: Math.max(1, +e.target.value || 1) })} />
@@ -56,7 +57,7 @@ export function Generate() {
       </div>
       <div className="row2">
         <button onClick={() => file.current?.click()}>Palette from image…</button>
-        <button disabled={!!ui.busy} onClick={() => (ui.apiKey ? aiGenerate() : setUI({ menu: 'key' }))} title="Claude writes the copy and picks a mood from your brief; the design stays algorithmic">{ui.apiKey ? 'Write copy with Claude' : 'Add API key to write copy…'}</button>
+        <button disabled={!!ui.busy} onClick={() => (aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) ? aiGenerate() : setUI({ menu: 'key' }))} title="Claude writes the copy and picks a mood from your brief; the design stays algorithmic">{aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) ? 'Write copy with AI' : 'Set up AI to write copy…'}</button>
       </div>
       <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { onImage(e.target.files?.[0]); e.target.value = '' }} />
       <p className="meta">Current: <b>{doc.meta.name}</b> · {archetypesFor(doc.meta.kind).find((a) => a.id === doc.meta.archetype)?.name} · mood {doc.meta.mood} · seed {doc.meta.seed}</p>

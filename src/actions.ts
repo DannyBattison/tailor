@@ -1,10 +1,13 @@
-import { aiBrief, aiRewrite } from './ai'
+import { aiBrief, aiReady, aiRewrite, type LlmConfig } from './ai'
 import { generate, generateGuarded, generateVariants, regenSection } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { genTokens } from './gen/tokens'
 import { collectTexts, duplicateNode, find, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
 import type { Doc } from './types'
+
+export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model } }
+const needAi = () => { const { ui } = getState(); if (aiReady(llmConfig(), ui.cli)) return true; setUI({ menu: 'key' }); toast('Pick an AI provider first'); return false }
 
 const rand = () => Math.floor(Math.random() * 99999) + 1
 
@@ -96,14 +99,14 @@ export function regenSelectedSection() {
 
 export async function aiGenerate() {
   const { ui } = getState()
-  if (!ui.apiKey) return toast('Add an API key first')
-  setUI({ busy: 'Writing brief with Claude…' })
+  if (!needAi()) return
+  setUI({ busy: 'Writing copy…' })
   try {
-    const r = await aiBrief(ui.apiKey, ui.model, ui.brief, ui.kind)
+    const r = await aiBrief(llmConfig(), ui.brief, ui.kind)
     const doc = generateGuarded({ ...opts(rand()), mood: r.mood ?? ui.mood, override: r.override, prev: getState().doc }, loadSigs())
     replaceDoc(doc)
     if (r.mood) setUI({ mood: r.mood })
-    toast('Copy written by Claude. Design decisions stayed algorithmic.')
+    toast('Copy written. Design decisions stayed algorithmic.')
   } catch (e) {
     toast((e as Error).message)
   } finally {
@@ -115,11 +118,11 @@ export async function aiRewriteSection(instruction: string) {
   const { ui, doc } = getState()
   const sec = ui.selectedId ? nearestSection(doc.root, ui.selectedId) : null
   if (!sec) return toast('Select something inside a section first')
-  if (!ui.apiKey) return toast('Add an API key first')
+  if (!needAi()) return
   setUI({ busy: 'Rewriting section…' })
   try {
     const items = collectTexts(sec)
-    const res = await aiRewrite(ui.apiKey, ui.model, items, instruction, `${doc.meta.name} (${doc.meta.siteKind}). ${doc.meta.brief}`)
+    const res = await aiRewrite(llmConfig(), items, instruction, `${doc.meta.name} (${doc.meta.siteKind}). ${doc.meta.brief}`)
     mutate((d) => {
       let root = d.root
       for (const r of res) if (find(root, r.id)) root = updateProps(root, r.id, { [r.prop]: r.text })

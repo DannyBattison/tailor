@@ -8,7 +8,30 @@ export const MODELS = [
   { id: 'claude-opus-5-5', label: 'Opus 5.5 (best copy)' },
 ]
 
-async function call(key: string, model: string, system: string, user: string, maxTokens = 2000): Promise<string> {
+export type Provider = 'api' | 'claude-cli' | 'codex-cli'
+export interface CliStatus { found: boolean; path?: string; version?: string | null }
+export type CliMap = Partial<Record<Exclude<Provider, 'api'>, CliStatus>>
+export interface LlmConfig { provider: Provider; key: string; model: string }
+
+/** Present only inside the Electron app (see electron/preload.cjs). */
+interface Bridge { llm: { detect(): Promise<CliMap>; run(r: { provider: string; system: string; prompt: string }): Promise<{ ok: boolean; text?: string; error?: string }> } }
+export const bridge = (): Bridge | undefined => (window as unknown as { handmade?: Bridge }).handmade
+
+export const PROVIDER_LABEL: Record<Provider, string> = { api: 'Anthropic API key', 'claude-cli': 'Claude Code (installed)', 'codex-cli': 'Codex (installed)' }
+
+export function aiReady(cfg: LlmConfig, cli: CliMap): boolean {
+  return cfg.provider === 'api' ? !!cfg.key : !!cli[cfg.provider]?.found
+}
+
+async function call(cfg: LlmConfig, system: string, user: string, maxTokens = 2000): Promise<string> {
+  if (cfg.provider !== 'api') {
+    const b = bridge()
+    if (!b) throw new Error('Installed CLIs are only available in the desktop app')
+    const r = await b.llm.run({ provider: cfg.provider, system, prompt: user })
+    if (!r.ok) throw new Error(`${PROVIDER_LABEL[cfg.provider]}: ${r.error}`)
+    return r.text ?? ''
+  }
+  const { key, model } = cfg
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -43,11 +66,11 @@ const STYLE = `Write specific, concrete, human copy. Name real-feeling details (
 export interface AiBrief { mood?: string; siteKind?: string; override: Record<string, any> }
 
 /** Brief stage: the only stage that touches an LLM. Returns copy + a mood; design decisions stay algorithmic. */
-export async function aiBrief(key: string, model: string, text: string, kind: Kind): Promise<AiBrief> {
+export async function aiBrief(cfg: LlmConfig, text: string, kind: Kind): Promise<AiBrief> {
   const shape = kind === 'marketing'
     ? `{"mood": one of ${MOOD_NAMES.join('|')}, "name": string, "eyebrow": string, "headline": string (max 70 chars), "short": string (2-3 words, poster headline), "sub": string (max 200 chars), "cta": string (max 20 chars), "ctaAlt": string, "nav": string[4], "features": [{"title": string, "body": string}] x6, "stats": [{"value": string, "label": string}] x4, "quotes": [{"text": string, "who": string}] x3, "closing": string, "closingSub": string, "marquee": string[4]}`
     : `{"mood": one of ${MOOD_NAMES.join('|')}, "name": string, "title": string, "sub": string, "primary": string (button), "nav": string[5], "user": string, "kpis": [{"value": string, "label": string}] x4}`
-  const out = await call(key, model, `You are a copywriter and art director's assistant. ${STYLE} Reply with JSON only, matching exactly: ${shape}`, `Kind: ${kind}.\nBrief: ${text || 'Surprise me with a specific, believable small business.'}`, 2500)
+  const out = await call(cfg, `You are a copywriter and art director's assistant. ${STYLE} Reply with JSON only, matching exactly: ${shape}`, `Kind: ${kind}.\nBrief: ${text || 'Surprise me with a specific, believable small business.'}`, 2500)
   const j = parseJson(out)
   const { mood, ...override } = j
   return { mood: MOOD_NAMES.includes(mood) ? mood : undefined, override }
@@ -56,9 +79,9 @@ export async function aiBrief(key: string, model: string, text: string, kind: Ki
 export interface TextItem { id: string; prop: string; text: string }
 
 /** Rewrite the copy of a section in place. Structure and count of strings are preserved. */
-export async function aiRewrite(key: string, model: string, items: TextItem[], instruction: string, context: string): Promise<TextItem[]> {
+export async function aiRewrite(cfg: LlmConfig, items: TextItem[], instruction: string, context: string): Promise<TextItem[]> {
   const out = await call(
-    key, model,
+    cfg,
     `You rewrite website copy. ${STYLE} You receive a JSON array of {id, prop, text}. Return a JSON array with the same ids and props and new text. Keep each string about the same length (+/- 30%). Return JSON only.`,
     `Site: ${context}\nInstruction: ${instruction}\n\n${JSON.stringify(items)}`,
     3000,

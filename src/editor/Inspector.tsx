@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { aiReady } from '../ai'
 import { aiRewriteSection, deleteSelected, duplicateSelected, nudgeSelected, regenSelectedSection, setProps } from '../actions'
 import { find, findParent, nearestSection } from '../lib/tree'
 import { setUI, useStore } from '../store'
@@ -74,9 +75,9 @@ export function Inspector() {
           <button onClick={regenSelectedSection}>Re-roll this section only</button>
           <div className="row2">
             <input placeholder="make it more… (e.g. blunt, warmer)" value={instr} onChange={(e) => setInstr(e.target.value)} />
-            <button disabled={!ui.apiKey || !!ui.busy} onClick={() => aiRewriteSection(instr ? `Make it more ${instr}.` : 'Rewrite the copy so it is more specific and less generic.')}>Rewrite</button>
+            <button disabled={!aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) || !!ui.busy} onClick={() => aiRewriteSection(instr ? `Make it more ${instr}.` : 'Rewrite the copy so it is more specific and less generic.')}>Rewrite</button>
           </div>
-          {!ui.apiKey && <p className="hint">Rewriting copy needs your own Anthropic key (top bar). Everything else works without.</p>}
+          {!aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) && <p className="hint">Rewriting copy needs an AI provider (top bar). Everything else works without.</p>}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { deleteSelected, duplicateSelected } from './actions'
-import { MODELS } from './ai'
+import { MODELS, PROVIDER_LABEL, aiReady, bridge, type Provider } from './ai'
 import { Canvas } from './editor/Canvas'
 import { CritiquePanel } from './editor/CritiquePanel'
 import { Design } from './editor/Design'
@@ -36,13 +36,30 @@ function TopBar() {
       <span className="spacer" />
       {fails > 0 && <button className="badge" onClick={() => setUI({ leftTab: 'critique' })}>{fails} critique fail{fails > 1 ? 's' : ''}</button>}
       <div className="pop">
-        <button onClick={() => setMenu(menu === 'key' ? '' : 'key')}>{ui.apiKey ? 'API key set' : 'API key'}</button>
+        <button onClick={() => setMenu(menu === 'key' ? '' : 'key')}>{aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) ? 'AI: ' + (ui.provider === 'api' ? 'API key' : ui.provider === 'claude-cli' ? 'Claude Code' : 'Codex') : 'AI setup'}</button>
         {menu === 'key' && (
           <div className="popover" onMouseLeave={() => {}}>
-            <p className="hint">Optional. Your key stays in this browser and requests go straight to api.anthropic.com. Without it, everything still works using the keyword fallback and the built-in content bank.</p>
-            <input type="password" autoComplete="off" placeholder="sk-ant-…" value={ui.apiKey} onChange={(e) => setUI({ apiKey: e.target.value.trim() })} />
-            <label className="toggle"><input type="checkbox" checked={ui.rememberKey} onChange={(e) => setUI({ rememberKey: e.target.checked })} /> Remember in localStorage</label>
-            <select value={ui.model} onChange={(e) => setUI({ model: e.target.value })}>{MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select>
+            <p className="hint">Optional. Without AI everything still works using the keyword fallback and the built-in content bank. The model only ever writes copy.</p>
+            {(['api', 'claude-cli', 'codex-cli'] as Provider[]).filter((p) => p === 'api' || bridge()).map((p) => {
+              const st = p === 'api' ? undefined : ui.cli[p]
+              const off = p !== 'api' && !st?.found
+              return (
+                <label key={p} className="toggle" style={{ opacity: off ? 0.5 : 1 }}>
+                  <input type="radio" name="prov" disabled={off} checked={ui.provider === p} onChange={() => setUI({ provider: p })} />
+                  <span>{PROVIDER_LABEL[p]}{p !== 'api' && <em> {st?.found ? st.version ?? 'found' : 'not found on PATH'}</em>}</span>
+                </label>
+              )
+            })}
+            {!bridge() && <p className="hint">Using your installed Claude Code or Codex needs the desktop app (<code>npm run electron:dev</code>).</p>}
+            {ui.provider === 'api' && (
+              <>
+                <p className="hint">Your key stays in this app and requests go straight to api.anthropic.com.</p>
+                <input type="password" autoComplete="off" placeholder="sk-ant-…" value={ui.apiKey} onChange={(e) => setUI({ apiKey: e.target.value.trim() })} />
+                <label className="toggle"><input type="checkbox" checked={ui.rememberKey} onChange={(e) => setUI({ rememberKey: e.target.checked })} /> Remember in localStorage</label>
+                <select value={ui.model} onChange={(e) => setUI({ model: e.target.value })}>{MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select>
+              </>
+            )}
+            {ui.provider !== 'api' && <p className="hint">Runs <code>{ui.provider === 'claude-cli' ? 'claude -p' : 'codex exec'}</code> with your existing login and settings. Claude gets no tools; Codex runs in a read-only sandbox in a temp folder.</p>}
             <button onClick={close}>Done</button>
           </div>
         )}
@@ -77,6 +94,8 @@ function TopBar() {
 
 export default function App() {
   const { ui } = useStore()
+
+  useEffect(() => { bridge()?.llm.detect().then((cli) => setUI({ cli })).catch(() => {}) }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
