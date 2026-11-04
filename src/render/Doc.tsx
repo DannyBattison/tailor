@@ -1,14 +1,28 @@
 import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
-import type { DNode, Tokens } from '../types'
+import { textOn } from '../lib/color'
+import type { DNode, Props, Tokens } from '../types'
 import { Art, type ArtKind } from './art'
 import { tokenVars } from './css'
 
 export interface RenderCtx {
+  tokens?: Tokens
   editor: boolean
   selectedId?: string | null
   hoverId?: string | null
 }
 const Ctx = createContext<RenderCtx>({ editor: false })
+
+/** https://placehold.co URL in palette colours, sized from the node's ratio. */
+export function placeholdUrl(p: Props, t?: Tokens, w = 1200): string {
+  const [rw, rh] = String(p.ratio ?? '4/3').split('/').map(Number)
+  const h = Math.round((w * (rh || 3)) / (rw || 4))
+  const pal = t?.palette
+  const bgs = pal ? [pal.surface, pal.accent2, pal.accent, pal.ink] : ['#e5e5e5', '#d4d4d4', '#bdbdbd', '#333333']
+  const bg = bgs[(p.tone ?? 0) % 4]
+  const fg = pal ? textOn(bg, 0) : '#222222'
+  const text = p.caption || `${rw || 4}:${rh || 3}`
+  return `https://placehold.co/${w}x${h}/${bg.slice(1)}/${fg.slice(1)}?text=${encodeURIComponent(text).replace(/%20/g, '+')}`
+}
 
 const PAD: Record<string, number> = { none: 0, s: 1.4, m: 2.4, l: 3.6, xl: 5.2 }
 
@@ -85,7 +99,11 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
       const a = useAttrs(n, 'd-img', { 'data-shape': p.shape }, { '--ratio': String(p.ratio ?? '4/3') })
       return (
         <figure {...a}>
-          <Art kind={(p.art ?? 'blocks') as ArtKind} seed={p.seed ?? 1} tone={p.tone ?? 0} />
+          {p.source === 'placehold' ? (
+            <img className="d-photo" src={placeholdUrl(p, ctx.tokens)} alt={p.caption ?? ''} loading="lazy" draggable={false} />
+          ) : (
+            <Art kind={(p.art ?? 'blocks') as ArtKind} seed={p.seed ?? 1} tone={p.tone ?? 0} />
+          )}
           {p.caption ? <figcaption {...ed(ctx, 'caption')}>{p.caption}</figcaption> : null}
         </figure>
       )
@@ -158,7 +176,7 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
 
 export function DocView({ root, tokens, ctx = { editor: false }, wire = false }: { root: DNode; tokens: Tokens; ctx?: RenderCtx; wire?: boolean }) {
   return (
-    <Ctx.Provider value={ctx}>
+    <Ctx.Provider value={{ ...ctx, tokens }}>
       <div className={'d-frame' + (wire ? ' wire' : '')}>
         <div className="d-doc" data-sig={tokens.signature} style={tokenVars(tokens) as CSSProperties}>
           <NodeView n={root} />

@@ -21,6 +21,7 @@ export interface UI {
   model: string
   busy: string
   toast: string
+  menu: '' | 'export' | 'key'
 }
 export interface State { doc: Doc; past: Doc[]; future: Doc[]; ui: UI }
 
@@ -31,14 +32,14 @@ const LS_KEY = 'hm.key'
 const defaultUI = (): UI => ({
   selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '', brief: '',
   seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, layout: false },
-  variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', busy: '', toast: '',
+  variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', busy: '', toast: '', menu: '',
 })
 
 function load(): State {
   const ui = defaultUI()
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
-    if (u) Object.assign(ui, u, { variants: null, busy: '', toast: '', selectedId: null })
+    if (u) Object.assign(ui, u, { variants: null, busy: '', toast: '', selectedId: null, menu: '' })
     const k = localStorage.getItem(LS_KEY)
     if (k) { ui.apiKey = k; ui.rememberKey = true }
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
@@ -59,7 +60,7 @@ function persist() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(LS_DOC, JSON.stringify(state.doc))
-      const { variants: _v, busy: _b, toast: _t, apiKey: _k, selectedId: _s, ...rest } = state.ui
+      const { variants: _v, busy: _b, toast: _t, apiKey: _k, selectedId: _s, menu: _m, ...rest } = state.ui
       localStorage.setItem(LS_UI, JSON.stringify(rest))
       if (state.ui.rememberKey && state.ui.apiKey) localStorage.setItem(LS_KEY, state.ui.apiKey)
       else localStorage.removeItem(LS_KEY)

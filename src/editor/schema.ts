@@ -55,6 +55,7 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     { key: 'arrow', label: 'Arrow', type: 'toggle' },
   ],
   image: [
+    { key: 'source', label: 'Source', type: 'select', options: [['', 'Generated art'], ['placehold', 'placehold.co']] },
     { key: 'art', label: 'Art', type: 'select', options: ['blocks', 'stripes', 'arches', 'dots', 'waves', 'sun', 'rings'].map((s) => [s, s]) },
     { key: 'ratio', label: 'Ratio', type: 'select', options: ['1/1', '4/3', '3/4', '4/5', '5/4', '16/9', '21/9', '3/1'].map((s) => [s, s]) },
     { key: 'shape', label: 'Shape', type: 'select', options: o('arch', 'pill', 'circle') },

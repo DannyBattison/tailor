@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { deleteSelected, duplicateSelected } from './actions'
 import { MODELS } from './ai'
 import { Canvas } from './editor/Canvas'
@@ -9,13 +9,15 @@ import { Inspector } from './editor/Inspector'
 import { Elements, Layers } from './editor/Layers'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
+import { designSystem, designSystemPrompt } from './designSystem'
 import { commit, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 import type { Doc } from './types'
 
 function TopBar() {
   const s = useStore()
   const { ui, doc } = s
-  const [menu, setMenu] = useState<'' | 'export' | 'key'>('')
+  const menu = ui.menu
+  const setMenu = (m: '' | 'export' | 'key') => setUI({ menu: m })
   const importRef = useRef<HTMLInputElement>(null)
   const name = slug(doc.meta.name)
   const fails = critique(doc).filter((i) => i.level === 'fail').length
@@ -48,9 +50,12 @@ function TopBar() {
       <div className="pop">
         <button className="primary" onClick={() => setMenu(menu === 'export' ? '' : 'export')}>Export ▾</button>
         {menu === 'export' && (
-          <div className="popover menu">
+          <div className="popover menu" style={{ width: 250 }}>
             <button onClick={() => { download(name + '.html', exportHtml(doc, ui.wire)); close() }}>Download HTML</button>
             <button onClick={async () => { await copyText(exportHtml(doc, ui.wire)); toast('HTML copied'); close() }}>Copy HTML</button>
+            <button onClick={() => { download(name + '.design-system.json', JSON.stringify(designSystem(doc), null, 2), 'application/json'); close() }}>Download design system JSON</button>
+            <button onClick={async () => { await copyText(designSystemPrompt(doc)); toast('Design system + instructions copied. Paste into your AI.'); close() }}>Copy design system as AI prompt</button>
+            <hr />
             <button onClick={() => { download(name + '.json', JSON.stringify(doc, null, 2), 'application/json'); close() }}>Download tree JSON</button>
             <button onClick={async () => { await copyText(JSON.stringify(doc, null, 2)); toast('JSON copied'); close() }}>Copy tree JSON</button>
             <button onClick={() => { importRef.current?.click(); close() }}>Import tree JSON…</button>

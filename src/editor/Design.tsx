@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { walk, updateProps } from '../lib/tree'
 import { rerollPart } from '../actions'
 import { FONT_PAIRS, getFont } from '../gen/fonts'
 import { paletteIssues } from '../gen/palette'
@@ -23,6 +24,13 @@ export function Design() {
     if (k === 'inverse') p.onInverse = fixOn(hex)
     mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: p, hue: k === 'accent' ? hexToOklch(hex).h : d.tokens.hue, paletteStrategy: 'manual' } }), 'pal-' + k)
   }
+  const setImages = (source?: string) => mutate((d) => {
+    let root = d.root
+    const ids: string[] = []
+    walk(root, (n) => { if (n.type === 'image') ids.push(n.id) })
+    for (const id of ids) root = updateProps(root, id, { source })
+    return { ...d, root }
+  })
   const issues = paletteIssues(t.palette)
   const slider = (label: string, key: keyof Tokens, min: number, max: number, step: number, fmt: (v: number) => string = String) => (
     <div className="field">
@@ -51,6 +59,13 @@ export function Design() {
         if (!f) return
         try { const r = await paletteFromImage(f); mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, hue: r.hue, paletteStrategy: 'image' } })) } catch (er) { toast((er as Error).message) }
       }} />
+
+      <label className="lbl">Images</label>
+      <div className="row2">
+        <button onClick={() => setImages(undefined)}>Generated art</button>
+        <button onClick={() => setImages('placehold')}>placehold.co</button>
+      </div>
+      <p className="hint">Switches every image. placehold.co images use your palette and need a network connection; wireframe mode still shows crossed boxes.</p>
 
       <label className="lbl">Fonts</label>
       <select value={t.fontId} onChange={(e) => set({ fontId: e.target.value }, 'font')}>

@@ -33,3 +33,14 @@ ok(bannedHue === 0, 'no blue-purple accents')
 ok(contrastFails === 0, 'palettes pass contrast')
 if (fail) { console.log(fail + ' failures'); process.exit(1) }
 console.log('all checks passed')
+import { designSystem } from '../src/designSystem'
+import { placeholdUrl } from '../src/render/Doc'
+{
+  const d = generate({ seed: 7, kind: 'marketing', mood: '', brief: '' })
+  const ds = designSystem(d)
+  const bad = !ds.colors.bg.hex || !ds.typography.googleFonts.includes('fonts.googleapis.com') || !ds.rules.length || !ds.layout.outline.length
+  if (bad) { console.log('FAIL design system incomplete'); process.exit(1) }
+  const u = placeholdUrl({ ratio: '16/9', tone: 2, caption: 'Hi there' }, d.tokens)
+  if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
+  console.log('design system + placehold ok')
+}

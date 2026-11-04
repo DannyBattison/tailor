@@ -2,18 +2,19 @@ import { fontStacks, getFont } from '../gen/fonts'
 import type { Tokens } from '../types'
 
 /** Token → CSS custom properties (set inline on the doc root, so many docs can coexist). */
+/** Fluid size for scale step n: clamp(min, a + b·cqw, max). Reaches `max` at a 1280px container and `min` at 390px. */
+export function typeStep(t: Tokens, n: number) {
+  const max = 16 * t.scale ** n
+  const min = n <= 0 ? max : Math.max(15, max * 0.5)
+  const b = (max - min) / 8.9
+  const a = min - 3.9 * b
+  return { min, max, css: n <= 0 ? `${Math.max(13, max).toFixed(1)}px` : `clamp(${min.toFixed(1)}px, ${a.toFixed(1)}px + ${b.toFixed(2)}cqw, ${max.toFixed(1)}px)` }
+}
+
 export function tokenVars(t: Tokens): Record<string, string> {
   const f = fontStacks(getFont(t.fontId))
   const p = t.palette
-  const r = t.scale
-  const step = (n: number) => {
-    const max = 16 * r ** n
-    const min = n <= 0 ? max : Math.max(15, max * 0.5)
-    const b = (max - min) / 8.9
-    const a = min - 3.9 * b
-    if (n <= 0) return `${Math.max(13, max).toFixed(1)}px`
-    return `clamp(${min.toFixed(1)}px, ${a.toFixed(1)}px + ${b.toFixed(2)}cqw, ${max.toFixed(1)}px)`
-  }
+  const step = (n: number) => typeStep(t, n).css
   const shadow = t.shadow === 'hard' ? `${Math.max(4, t.border * 2.5)}px ${Math.max(4, t.border * 2.5)}px 0 var(--ink)` : t.shadow === 'soft' ? '0 10px 30px -10px color-mix(in oklab, var(--ink) 35%, transparent)' : 'none'
   return {
     '--bg': p.bg, '--surface': p.surface, '--ink': p.ink, '--muted': p.muted, '--line': p.line,
@@ -86,6 +87,7 @@ export const DOC_CSS = `
 .d-img[data-shape=arch]{border-radius:999px 999px var(--radius) var(--radius)}
 .d-img[data-shape=pill]{border-radius:999px}
 .d-img[data-shape=circle]{border-radius:50%}
+.d-img img.d-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .d-img .d-art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .d-img figcaption{position:absolute;left:8px;bottom:8px;background:var(--bg);color:var(--ink);font:var(--fs-s)/1.2 var(--f-mono);padding:3px 7px;border-radius:calc(var(--radius) / 2)}
 .d-nav{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--space) * 1.2);padding:calc(var(--space) * .8) calc(var(--space) * 1.2);flex-wrap:wrap}
@@ -180,7 +182,8 @@ export const DOC_CSS = `
 .d-frame.wire .d-doc::after{display:none}
 .d-frame.wire .d-doc *{transform:none !important;animation:none !important}
 .d-frame.wire .d-img{background:#fafafa;border:1px solid #999;border-radius:2px;background-image:linear-gradient(to top right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px)),linear-gradient(to bottom right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px))}
-.d-frame.wire .d-img .d-art{display:none}
+.d-frame.wire .d-img img.d-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.d-img .d-art{display:none}
 .d-frame.wire .d-sec[data-bg]{background:#f1f1f1}
 .d-frame.wire .d-sec[data-bg=bg]{background:#fff}
 .d-frame.wire .d-sec{outline:1px dashed #bbb;outline-offset:-1px}
