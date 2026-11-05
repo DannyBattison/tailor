@@ -9,7 +9,7 @@ import { Elements, Layers } from './editor/Layers'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
 import { designSystem, designSystemPrompt } from './designSystem'
-import { commit, redo, setUI, toast, undo, useStore, type Viewport } from './store'
+import { commit, getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 import type { Doc } from './types'
 
 function TopBar() {
@@ -37,7 +37,7 @@ function TopBar() {
           return <button key={m} disabled={!doc.tokens.spec} className={cur === m ? 'on' : ''} onClick={() => setMode(m)}>{m}</button>
         })}
       </div>
-      <label className="toggle"><input type="checkbox" checked={ui.wire} onChange={(e) => setUI({ wire: e.target.checked })} /> Wireframe</label>
+      <label className="toggle"><input type="checkbox" checked={ui.wire} onChange={(e) => setUI({ wire: e.target.checked })} /> <span>Wireframe</span></label>
       <span className="spacer" />
       {fails > 0 && <button className="badge" onClick={() => setUI({ leftTab: 'critique' })}>{fails} critique fail{fails > 1 ? 's' : ''}</button>}
       <div className="pop">
@@ -76,13 +76,14 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
+      if (e.key === 'Escape' && getState().ui.drawer) { setUI({ drawer: '' }); return }
       if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }
       else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo() }
       else if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected() }
       else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected() }
-      else if (e.key === 'Escape') setUI({ selectedId: null })
+      else if (e.key === 'Escape') setUI({ selectedId: null, drawer: '' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -90,9 +91,16 @@ export default function App() {
 
   const tabs: [typeof ui.leftTab, string][] = [['generate', 'Generate'], ['elements', 'Add'], ['layers', 'Layers'], ['critique', 'Critique']]
   return (
-    <div className="app">
+    <div className={'app' + (ui.drawer ? ' drawer-' + ui.drawer : '')}>
       <TopBar />
-      <aside className="left">
+      <button className="fab fab-left" aria-expanded={ui.drawer === 'left'} aria-controls="left-drawer" onClick={() => setUI({ drawer: ui.drawer === 'left' ? '' : 'left' })}>
+        <span aria-hidden>{ui.drawer === 'left' ? '✕' : '☰'}</span> {ui.drawer === 'left' ? 'Close' : 'Build'}
+      </button>
+      <button className="fab fab-right" aria-expanded={ui.drawer === 'right'} aria-controls="right-drawer" onClick={() => setUI({ drawer: ui.drawer === 'right' ? '' : 'right' })}>
+        <span aria-hidden>{ui.drawer === 'right' ? '✕' : '⚙'}</span> {ui.drawer === 'right' ? 'Close' : 'Style'}
+      </button>
+      <div className="backdrop" onClick={() => setUI({ drawer: '' })} />
+      <aside className="left" id="left-drawer">
         <nav className="tabs">{tabs.map(([k, l]) => <button key={k} className={ui.leftTab === k ? 'on' : ''} onClick={() => setUI({ leftTab: k })}>{l}</button>)}</nav>
         <div className="scroll">
           {ui.leftTab === 'generate' && <Generate />}
@@ -102,7 +110,7 @@ export default function App() {
         </div>
       </aside>
       <main className="center"><Canvas /></main>
-      <aside className="right">
+      <aside className="right" id="right-drawer">
         <nav className="tabs">
           <button className={ui.rightTab === 'node' ? 'on' : ''} onClick={() => setUI({ rightTab: 'node' })}>Selection</button>
           <button className={ui.rightTab === 'design' ? 'on' : ''} onClick={() => setUI({ rightTab: 'design' })}>Design tokens</button>

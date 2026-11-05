@@ -17,7 +17,7 @@ export function Elements() {
       if (loc) return { ...d, root: insertNode(d.root, loc.parent.id, loc.index + 1, node) }
       return { ...d, root: insertNode(d.root, d.root.id, d.root.children.length, node) }
     })
-    setUI({ selectedId: node.id })
+    setUI({ selectedId: node.id, drawer: '' })
   }
   return (
     <div className="panel-body">
