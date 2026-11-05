@@ -108,4 +108,5 @@ details.content[open]{padding-bottom:8px}
 details.content[open]>summary{color:var(--c-ink)}
 details.content>*:not(summary){margin-left:8px;margin-right:8px}
 details.content>*:not(summary):not(:first-of-type){margin-top:6px}
-.seedrow input{font:11.5px 'IBM Plex Mono',ui-monospace,monospace;min-width:0}
+.seedrow{align-items:center}
+.seedbox{font:12px/1.35 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.04em;word-break:break-all;resize:none}

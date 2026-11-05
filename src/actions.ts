@@ -1,13 +1,16 @@
 import * as R from './gen/reroll'
 import { fromCode } from './gen/code'
-import { generateGuarded, generateVariants, regenSection } from './gen/generate'
+import { generateGuarded, generateVariants } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { paletteOf } from './gen/palette'
-import { duplicateNode, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
+import { duplicateNode, findParent, mapNode, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
 import type { Doc } from './types'
 
-const rand = () => Math.floor(Math.random() * 99999) + 1
+/** a fresh base seed (parts are derived from it) */
+const rand = () => Math.floor(Math.random() * 2 ** 31)
+/** a fresh 5-digit part seed */
+const rand5 = () => Math.floor(Math.random() * 100000)
 
 function opts(seed: number) {
   const { ui, doc } = getState()
@@ -20,9 +23,9 @@ export function newDesign() {
   replaceDoc(doc)
 }
 
-/** Recreate a design from a design code (a plain seed, or the long form that spells out every part). */
+/** Recreate a design from its code. */
 export function loadCode(code: string) {
-  const doc = fromCode(code, getState().ui.kind)
+  const doc = fromCode(code)
   if (!doc) return toast('That is not a valid design code')
   setUI({ kind: doc.meta.kind })
   replaceDoc(doc)
@@ -41,11 +44,10 @@ export function pickVariant(d: Doc) {
 export type Part = R.TokenPart
 
 /** Re-rolls: each gives one part a new seed, so the design code always describes the result. */
-export function rerollLayout() { mutate((d) => R.rerollLayout(d, rand()), '', true); setUI({ selectedId: null }) }
-export function rerollPart(part: Part) { mutate((d) => R.rerollToken(d, part, rand()), '', true) }
-export function rerollText() { mutate((d) => R.rerollText(d, rand()), '', true); setUI({ selectedId: null }) }
-export function rerollImages() { mutate((d) => R.rerollImages(d, rand()), '', true) }
-export function rerollBackdrops() { mutate((d) => R.rerollBackdrops(d, rand()), '', true) }
+export function rerollLayout() { mutate((d) => R.rerollLayout(d, rand5()), '', true); setUI({ selectedId: null }) }
+export function rerollPart(part: Part) { mutate((d) => R.rerollToken(d, part, rand5()), '', true) }
+export function rerollText() { mutate((d) => R.rerollText(d, rand5()), '', true); setUI({ selectedId: null }) }
+export function rerollBackdrops() { mutate((d) => R.rerollBackdrops(d, rand5()), '', true) }
 
 export function newDocFromScratch(kind: 'marketing' | 'app') {
   setUI({ kind })
@@ -87,17 +89,6 @@ export function nudgeSelected(dir: -1 | 1) {
 
 export function setProps(id: string, props: Record<string, any>, key?: string) {
   mutate((d) => ({ ...d, root: updateProps(d.root, id, props) }), key ?? 'p-' + id + Object.keys(props).join())
-}
-
-/** Scoped regeneration: re-roll only the section containing the selection. */
-export function regenSelectedSection() {
-  const { ui, doc } = getState()
-  const sec = ui.selectedId ? nearestSection(doc.root, ui.selectedId) : null
-  if (!sec) return toast('Select something inside a section first')
-  const next = regenSection(doc, sec.id, rand())
-  if (!next) return toast('This section was edited by hand and has no generator to re-run')
-  mutate((d) => ({ ...d, root: mapNode(d.root, sec.id, () => ({ ...next, id: sec.id })) }))
-  setUI({ selectedId: sec.id })
 }
 
 /** Light/dark for the design itself (not the editor chrome). Needs a generated palette to derive from. */

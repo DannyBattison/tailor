@@ -1,15 +1,14 @@
 import { makeRng, stageRng } from '../lib/rng'
-import { find, mk, walk } from '../lib/tree'
+import { mk, walk } from '../lib/tree'
 import type { DNode, Doc, Kind, Locks, Meta, PartSeeds, Signature } from '../types'
-import { ART_KINDS } from '../render/art'
-import { ALL_ARCHETYPES, SECTIONS, archetypesFor, backdropProps, clearBackdrop, roleOf, variantsOf, type Ctx } from './build'
+import { ALL_ARCHETYPES, SECTIONS, archetypesFor, backdropProps, clearBackdrop, type Ctx } from './build'
 import { loremApp, loremMarketing } from './lorem'
 import { sigOf, tooClose, type Sig } from './guard'
 import { MOOD_NAMES } from './moods'
 import { fixSignature, genTokens, tokensFromParts } from './tokens'
 
 export interface GenOpts {
-  /** base seed: the default for every part that isn't given one */
+  /** base seed: parts that aren't given explicitly are derived from it */
   seed: number
   kind: Kind
   mood: string // '' = pick from the seed (or keep the previous design's mood when a token part is locked)
@@ -20,11 +19,15 @@ export interface GenOpts {
   prev?: Doc
 }
 
-export const baseParts = (n: number): PartSeeds => ({ palette: n, fonts: n, shape: n, layout: n, text: n, backdrops: 0, images: 0 })
+export const SEED_MAX = 99999 // each part seed is 5 digits
+const PART_KEYS = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'] as const
+/** Independent 5-digit seeds for every part, derived from one base seed. */
+export const partsFromSeed = (n: number): PartSeeds =>
+  Object.fromEntries(PART_KEYS.map((k) => [k, stageRng(n, 'part:' + k).int(0, SEED_MAX)])) as unknown as PartSeeds
 /** The part seeds behind a design (older saved designs fall back to what they stored). */
-export const partsOf = (d: Doc): PartSeeds => d.meta.parts ?? { ...baseParts(d.meta.seed), layout: d.meta.layoutSeed, text: d.meta.contentSeed ?? d.meta.layoutSeed }
+export const partsOf = (d: Doc): PartSeeds => d.meta.parts ?? { ...partsFromSeed(d.meta.seed), layout: d.meta.layoutSeed, text: d.meta.contentSeed ?? d.meta.layoutSeed }
 export const archetypeFor = (kind: Kind, layoutSeed: number) => stageRng(layoutSeed, 'archetype').pick(archetypesFor(kind)).id
-export const moodFor = (seed: number) => makeRng(seed).pick(MOOD_NAMES)
+export const moodFor = (seed: number) => stageRng(seed, 'mood').pick(MOOD_NAMES)
 
 export function contentFor(seed: number) {
   return { c: loremMarketing(seed), a: loremApp(seed) }
@@ -32,16 +35,10 @@ export function contentFor(seed: number) {
 
 const mapAll = (n: DNode, fn: (n: DNode) => DNode): DNode => fn({ ...n, children: n.children.map((c) => mapAll(c, fn)) })
 
-/** New backdrops for every hero/band/tile that was given one at generation (post-order, so a seed always lands the same). */
+/** Backdrops for every hero/band/tile that takes one (post-order, so a seed always lands the same). */
 export function applyBackdrops(root: DNode, seed: number): DNode {
   const rng = makeRng(seed)
   return mapAll(root, (n) => (n.props.bdGen ? { ...n, props: { ...n.props, ...clearBackdrop(), ...backdropProps(rng, n.props.bdRole, n.props.bg, !!n.props.bdFlat) } } : n))
-}
-
-/** New art motif, seed and tone for every generated-art image. */
-export function applyImages(root: DNode, seed: number): DNode {
-  const rng = makeRng(seed)
-  return mapAll(root, (n) => (n.type === 'image' ? { ...n, props: { ...n.props, art: rng.pick(ART_KINDS), seed: rng.int(1, 9999), tone: rng.int(0, 3) } } : n))
 }
 
 export function generate(o: GenOpts): Doc {
@@ -49,12 +46,12 @@ export function generate(o: GenOpts): Doc {
   const prev = o.prev
   const same = prev && prev.meta.kind === o.kind ? prev : undefined // layout and text only carry over within a kind
   const pp = prev ? partsOf(prev) : undefined
-  const parts: PartSeeds = baseParts(o.seed)
+  const parts: PartSeeds = partsFromSeed(o.seed)
   if (pp) {
     if (locks.palette) parts.palette = pp.palette
     if (locks.fonts) parts.fonts = pp.fonts
     if (locks.shape) parts.shape = pp.shape
-    if (same && locks.layout) { parts.layout = pp.layout; parts.backdrops = pp.backdrops; parts.images = pp.images }
+    if (same && locks.layout) { parts.layout = pp.layout; parts.backdrops = pp.backdrops }
     if (same && locks.copy) parts.text = pp.text
   }
   Object.assign(parts, o.parts)
@@ -67,9 +64,7 @@ export function generate(o: GenOpts): Doc {
   const arch = ALL_ARCHETYPES.find((a) => a.id === archetype)!
   const cont = contentFor(parts.text)
   const x: Ctx = { rng: stageRng(parts.layout, 'layout:' + arch.id), t: tokens, c: cont.c, a: cont.a }
-  let root = mk('page', {}, postProcess(arch.build(x), x, parts.layout))
-  if (parts.backdrops) root = applyBackdrops(root, parts.backdrops)
-  if (parts.images) root = applyImages(root, parts.images)
+  const root = applyBackdrops(mk('page', {}, postProcess(arch.build(x), x, parts.layout)), parts.backdrops)
   const meta: Meta = {
     seed: o.seed, kind: o.kind, mood, archetype, layoutSeed: parts.layout, contentSeed: parts.text, parts,
     name: o.kind === 'app' ? cont.a.name : cont.c.name,
@@ -101,7 +96,7 @@ function postProcess(nodes: DNode[], x0: Ctx, layoutSeed: number): DNode[] {
       if (n.type === 'section' && !['nav', 'footer', 'marquee'].includes(n.props.role) && !String(n.props.build).startsWith('hero') && n.props.bg !== 'inverse' && !String(n.props.build).startsWith('app.topbar')) cands.push(n)
     })
     const pick = cands.length ? cands[Math.floor(cands.length / 2)] : null
-    if (pick) pick.props = { ...pick.props, bg: 'inverse', sigInverted: true }
+    if (pick) pick.props = { ...pick.props, bg: 'inverse', sigInverted: true, sigBg: pick.props.bg ?? '' } // remember the fill it replaces so the signature can be swapped back out
   }
   return out
 }
@@ -125,7 +120,7 @@ export function generateVariants(o: GenOpts, history: Sig[]): Doc[] {
     let pick: Doc | null = null
     for (let k = 0; k < 400 && !pick; k++) {
       const seed = o.seed + i * 104729 + k * 7919
-      if (archetypeFor(o.kind, seed) !== a.id) continue
+      if (archetypeFor(o.kind, partsFromSeed(seed).layout) !== a.id) continue
       const doc = generate({ ...o, seed, locks: undefined, prev: undefined })
       if (!tooClose(sigOf(doc), [...history, ...out.map(sigOf)]) || k > 300) pick = doc
     }
@@ -134,36 +129,24 @@ export function generateVariants(o: GenOpts, history: Sig[]): Doc[] {
   return out
 }
 
-/** Re-roll just one section: same tokens and content, different structural variant. */
-export function regenSection(doc: Doc, sectionId: string, seed: number): DNode | null {
-  const old = find(doc.root, sectionId)
-  if (!old || old.type !== 'section') return null
-  const build = String(old.props.build ?? '')
-  if (!SECTIONS[build]) return null
-  const alts = variantsOf(roleOf(build))
-  const rng = makeRng(seed)
-  const pickKey = alts.length > 1 ? rng.pick(alts.filter((k) => k !== build)) : build
-  const cont = contentFor(doc.meta.contentSeed ?? doc.meta.layoutSeed)
-  const x: Ctx = { rng, t: doc.tokens, c: cont.c, a: cont.a }
-  const next = SECTIONS[pickKey](x)
-  if (old.props.bg === 'inverse' && next.type === 'section') next.props.bg = 'inverse'
-  return next
-}
-
 /** Swap the signature move without rebuilding: updates tokens and adds/removes the marquee band or inverted section. */
 export function withSignature(doc: Doc, sig: Signature): Doc {
   if (doc.meta.kind === 'app' && sig === 'marquee') sig = 'hardShadow'
   const tokens = fixSignature({ ...doc.tokens, signature: sig })
   const strip = (n: DNode): DNode => {
     const props = { ...n.props }
-    if (props.sigInverted) { delete props.bg; delete props.sigInverted }
+    if (props.sigInverted) {
+      if (props.sigBg) props.bg = props.sigBg
+      else delete props.bg
+      delete props.sigInverted
+      delete props.sigBg
+    }
     return { ...n, props, children: n.children.filter((c) => !c.props.sigBand).map(strip) }
   }
   const clean = strip(doc.root)
   const cont = contentFor(doc.meta.contentSeed ?? doc.meta.layoutSeed)
   const x: Ctx = { rng: makeRng(0), t: tokens, c: cont.c, a: cont.a }
   let root: DNode = { ...clean, children: postProcess(clean.children, x, doc.meta.layoutSeed) }
-  const bd = partsOf(doc).backdrops
-  if (bd) root = applyBackdrops(root, bd) // backdrops depend on each band's fill, so redo them after the signature changes it
+  root = applyBackdrops(root, partsOf(doc).backdrops) // backdrops depend on each band's fill, so redo them after the signature changes it
   return { ...doc, tokens, root }
 }

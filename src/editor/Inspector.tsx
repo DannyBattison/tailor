@@ -1,5 +1,5 @@
 import { deleteSelected, duplicateSelected, nudgeSelected, setProps } from '../actions'
-import { find, findParent, nearestSection } from '../lib/tree'
+import { find, findParent } from '../lib/tree'
 import { setUI, useStore } from '../store'
 import type { DNode } from '../types'
 import { COLUMN_PRESETS, COMMON, SCHEMA, type Field } from './schema'
@@ -38,7 +38,6 @@ export function Inspector() {
   if (!node) return <div className="panel-body"><p className="hint">Click anything on the canvas to inspect it. Double-click text to edit it in place.</p></div>
   const loc = findParent(doc.root, node.id)
   const fields = [...(SCHEMA[node.type] ?? []), ...(loc?.parent.type === 'box' && loc.parent.props.dir === 'grid' || node.props.span ? COMMON : COMMON.slice(2))]
-  const sec = nearestSection(doc.root, node.id)
   return (
     <div className="panel-body">
       <div className="row2 head">
@@ -66,7 +65,6 @@ export function Inspector() {
           <FieldInput f={f} node={node} />
         </div>
       ))}
-      {sec && <p className="hint scoped">Section: {String(sec.props.build ?? 'custom')}. Re-roll it from the Generate tab.</p>}
     </div>
   )
 }

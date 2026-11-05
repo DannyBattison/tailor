@@ -40,7 +40,7 @@ function load(): State {
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
     if (d?.root && d.tokens) return { doc: d, past: [], future: [], ui }
   } catch { /* fall through */ }
-  const doc = generateGuarded({ seed: Math.floor(Math.random() * 99999) + 1, kind: ui.kind, mood: ui.mood }, loadSigs())
+  const doc = generateGuarded({ seed: Math.floor(Math.random() * 2 ** 31), kind: ui.kind, mood: ui.mood }, loadSigs())
   pushSig(sigOf(doc))
   return { doc, past: [], future: [], ui }
 }

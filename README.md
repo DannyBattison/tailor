@@ -24,7 +24,7 @@ There is no AI integration and no network use beyond Google Fonts and placehold.
 
 ## Seeds
 
-The seed shown in the Generate tab is a design code that updates with every re-roll and rebuilds the generated design exactly.
-A fresh design is a plain number (`48213`); once parts have been re-rolled it spells out each one
-(`m-editorial-1k2-9x1-…`: kind, mood, then the palette, fonts, shape, layout, text, backdrop and image seeds, background boldness, mode).
-Hand edits (tree edits, sliders, swatches, section re-rolls) are not part of the code; export the page tree JSON to keep those.
+The seed shown in the Generate tab is a 35-digit design code: six 5-digit blocks (palette, fonts, shape, layout, text, backdrops)
+and a setup block (mood, product, background boldness, mode). Re-rolling a part rewrites only its own block, and loading a seed
+rebuilds the generated design exactly. A new design starts with a fully random seed.
+Hand edits (tree edits, sliders, swatches) are not part of the code; export the page tree JSON to keep those.

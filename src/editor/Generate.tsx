@@ -1,12 +1,11 @@
 import { useRef } from 'react'
-import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, regenSelectedSection, rerollBackdrops, rerollImages, rerollLayout, rerollPart, rerollText, type Part } from '../actions'
+import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, rerollBackdrops, rerollLayout, rerollPart, rerollText, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
 import { designCode } from '../gen/code'
 import { copyText } from '../export'
 import { getFont, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
 import { paletteFromImage } from '../imagePalette'
-import { nearestSection } from '../lib/tree'
 import { DocView } from '../render/Doc'
 import { mutate, setUI, toast, useStore } from '../store'
 import type { Locks } from '../types'
@@ -16,7 +15,6 @@ interface Row { label: string; hint: string; lock?: keyof Locks; run: () => void
 export function Generate() {
   const { ui, doc } = useStore()
   const file = useRef<HTMLInputElement>(null)
-  const inSection = !!(ui.selectedId && nearestSection(doc.root, ui.selectedId))
   const code = designCode(doc)
   const shown = ui.codeInput ?? code
   const dirty = ui.codeInput !== null && ui.codeInput.trim() !== code
@@ -42,8 +40,6 @@ export function Generate() {
     { label: 'Layout', hint: archetypesFor(doc.meta.kind).find((a) => a.id === doc.meta.archetype)?.name ?? '', lock: 'layout', run: rerollLayout },
     { label: 'Text', hint: 'new lorem ipsum', lock: 'copy', run: rerollText },
     { label: 'Backdrops', hint: 'hero and band backgrounds', run: rerollBackdrops },
-    { label: 'Images', hint: 'new art', run: rerollImages },
-    { label: 'Section', hint: inSection ? 'the selected one' : 'select something first', run: regenSelectedSection, disabled: !inSection },
   ]
 
   const rowView = (r: Row) => {
@@ -80,12 +76,13 @@ export function Generate() {
       </div>
       <div className="row2 seedrow">
         <span className="seedlabel">Seed</span>
-        <input type="text" spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && dirty) loadCode(shown) }} title="Design code: recreates this design exactly" />
-        <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this code">Load</button>
-        <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's code">Copy</button>
+        <span style={{ flex: 1 }} />
+        <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this seed">Load</button>
+        <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's seed">Copy</button>
       </div>
-      <p className="hint">The seed updates with every re-roll and rebuilds this design exactly. A fresh design is a plain number; once you re-roll parts it spells out each part. Lock a part to keep it through New design.</p>
-      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches, section re-rolls). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
+      <textarea className="seedbox" rows={2} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Six 5-digit blocks (palette, fonts, shape, layout, text, backdrops) and a setup block. Recreates this design exactly." />
+      <p className="hint">The seed is seven 5-digit blocks: palette, fonts, shape, layout, text, backdrops, then setup (mood, product, boldness, mode). Re-rolling a part rewrites only its block, and loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
+      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
       <div className="parts">{rows.map(rowView)}</div>
 
       <p className="hint">The page on the canvas is a specimen with lorem ipsum text. The export is the design system; your AI writes the real copy.</p>

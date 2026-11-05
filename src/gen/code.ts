@@ -1,33 +1,36 @@
-// The design code: a short string that recreates a generated design exactly.
-//  - a fresh design is just its seed ("48213")
-//  - once parts have been re-rolled (or mood/boldness/mode set) it spells out every part:
-//    kind-mood-palette-fonts-shape-layout-text-backdrops-images-boldness-mode
-import type { Doc, Kind } from '../types'
+// The design code ("seed"): a fixed-width string that recreates a generated design exactly.
+//   6 part seeds of 5 digits (palette, fonts, shape, layout, text, backdrops)
+//   + 1 setup block of 5 digits:  M K BB m  = mood index, kind (0 marketing / 1 app), background boldness in 5% steps, mode (0 natural / 1 light / 2 dark)
+// Re-rolling a part rewrites only its own block.
+import type { Doc, Kind, PartSeeds } from '../types'
+import { MOOD_NAMES } from './moods'
+import { generate, partsOf } from './generate'
 import { DEFAULT_BG_BOLD } from './palette'
-import { MOODS } from './moods'
-import { baseParts, generate, moodFor, partsOf } from './generate'
 
-const b36 = (n: number) => n.toString(36)
+const pad = (n: number, w = 5) => String(n).padStart(w, '0')
+const ORDER: (keyof PartSeeds)[] = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops']
+export const CODE_LENGTH = (ORDER.length + 1) * 5
 
 export function designCode(doc: Doc): string {
   const p = partsOf(doc)
-  const bold = Math.round((doc.tokens.bgBold ?? DEFAULT_BG_BOLD) * 100)
-  const plain = p.palette === p.fonts && p.fonts === p.shape && p.shape === p.layout && p.layout === p.text && !p.backdrops && !p.images
-  if (plain && doc.meta.mood === moodFor(p.palette) && bold === DEFAULT_BG_BOLD * 100 && !doc.tokens.mode) return String(p.palette)
-  return [doc.meta.kind[0], doc.meta.mood, b36(p.palette), b36(p.fonts), b36(p.shape), b36(p.layout), b36(p.text), b36(p.backdrops), b36(p.images), bold, doc.tokens.mode?.[0] ?? 'n'].join('-')
+  const bold = Math.round((doc.tokens.bgBold ?? DEFAULT_BG_BOLD) * 20)
+  const mode = doc.tokens.mode === 'light' ? 1 : doc.tokens.mode === 'dark' ? 2 : 0
+  const setup = `${MOOD_NAMES.indexOf(doc.meta.mood)}${doc.meta.kind === 'app' ? 1 : 0}${pad(bold, 2)}${mode}`
+  return ORDER.map((k) => pad(p[k])).join('') + setup
 }
 
-/** Recreate a design from a code. `kind` is only used for plain seeds, which don't say which kind they are. */
-export function fromCode(code: string, kind: Kind): Doc | null {
-  const c = code.trim()
-  if (/^\d+$/.test(c)) return generate({ seed: +c, kind, mood: '' })
-  const m = c.match(/^([ma])-([a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-(\d{1,3})-([nld])$/)
-  if (!m || !MOODS[m[2]]) return null
-  const n = (i: number) => parseInt(m[i], 36)
-  const parts = { palette: n(3), fonts: n(4), shape: n(5), layout: n(6), text: n(7), backdrops: n(8), images: n(9) }
-  if (Object.values(parts).some((v) => !Number.isFinite(v))) return null
-  return generate({
-    seed: parts.palette || baseParts(1).palette, kind: m[1] === 'a' ? 'app' : 'marketing', mood: m[2], parts,
-    bgBold: +m[10] / 100, mode: m[11] === 'l' ? 'light' : m[11] === 'd' ? 'dark' : undefined,
-  })
+export const isCode = (s: string) => new RegExp(`^\\d{${CODE_LENGTH}}$`).test(s.replace(/[\s-]/g, ''))
+
+/** Recreate a design from its code, or null when the code isn't one. */
+export function fromCode(code: string): Doc | null {
+  const c = code.replace(/[\s-]/g, '')
+  if (!isCode(c)) return null
+  const n = (i: number) => +c.slice(i * 5, i * 5 + 5)
+  const parts = Object.fromEntries(ORDER.map((k, i) => [k, n(i)])) as unknown as PartSeeds
+  const setup = c.slice(ORDER.length * 5)
+  const mood = MOOD_NAMES[+setup[0]]
+  const bold = +setup.slice(2, 4)
+  if (!mood || bold > 20 || +setup[4] > 2) return null
+  const kind: Kind = setup[1] === '1' ? 'app' : 'marketing'
+  return generate({ seed: parts.palette, kind, mood, parts, bgBold: bold / 20, mode: setup[4] === '1' ? 'light' : setup[4] === '2' ? 'dark' : undefined })
 }
