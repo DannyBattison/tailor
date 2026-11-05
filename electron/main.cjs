@@ -117,6 +117,15 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   win.setMenuBarVisibility(false)
+  // Electron's built-in Zoom In is Ctrl+Plus, which needs Shift on most layouts. Make Ctrl/Cmd + =, +, - and 0 behave like a browser.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return
+    const wc = win.webContents
+    const clamp = (z) => Math.min(5, Math.max(-3, z))
+    if (['=', '+', 'Add'].includes(input.key)) { wc.setZoomLevel(clamp(wc.getZoomLevel() + 0.5)); event.preventDefault() }
+    else if (['-', '_', 'Subtract'].includes(input.key)) { wc.setZoomLevel(clamp(wc.getZoomLevel() - 0.5)); event.preventDefault() }
+    else if (input.key === '0') { wc.setZoomLevel(0); event.preventDefault() }
+  })
   const dev = process.env.VITE_DEV_URL
   const external = (u) => /^https?:\/\//.test(u) && !(dev && u.startsWith(dev))
   win.webContents.setWindowOpenHandler(({ url }) => { if (external(url)) shell.openExternal(url); return { action: 'deny' } })
