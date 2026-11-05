@@ -1,4 +1,4 @@
-import { getFont } from '../gen/fonts'
+import { fontSpec } from '../gen/fonts'
 import { contrast, ensureContrast, hexToOklch, mix, textOn, toHex } from '../lib/color'
 import type { Palette, Props, Tokens } from '../types'
 
@@ -37,7 +37,7 @@ export function placeholdUrl(p: Props, t?: Tokens, w = 1200): string {
   const pal = t?.palette
   const { bg, fg } = pal ? placeholdColors(pal, p.tone ?? 0) : { bg: '#d9d4c7', fg: '#3a362e' }
   const text = p.caption || `${rw || 4}:${rh || 3}`
-  const font = t && getFont(t.fontId).displayFallback === 'serif' ? 'playfair-display' : 'source-sans-pro'
+  const font = t && fontSpec(t).heading.cat === 'serif' ? 'playfair-display' : 'source-sans-pro'
   // hideText: draw the label in the background colour so only a flat stand-in remains
   const ink = p.hideText ? bg : fg
   return `https://placehold.co/${w}x${h}/${bg.slice(1)}/${ink.slice(1)}?text=${encodeURIComponent(text).replace(/%20/g, '+')}&font=${font}`

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { fontsUrl, getFont, loadFont } from '../gen/fonts'
+import { fontKey, fontSpec, fontsUrl, loadFont } from '../gen/fonts'
 import { cloneFresh, find, insertNode, moveNode, updateProps } from '../lib/tree'
 import { DOC_CSS } from '../render/css'
 import { DocView } from '../render/Doc'
@@ -25,7 +25,8 @@ export function Canvas() {
   const width = VIEWPORT_W[ui.viewport]
   const scale = Math.min(1, (avail - 40) / width)
 
-  useEffect(() => { loadFont(getFont(doc.tokens.fontId)) }, [doc.tokens.fontId])
+  const fonts = fontSpec(doc.tokens)
+  useEffect(() => { loadFont(fonts) }, [fontKey(fonts)]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const ro = new ResizeObserver(() => setAvail(scrollRef.current?.clientWidth ?? 1000))
     ro.observe(scrollRef.current!)
@@ -145,7 +146,7 @@ export function Canvas() {
 
   return (
     <div className="canvas-scroll" ref={scrollRef} onClick={(e) => { if (e.target === e.currentTarget) setUI({ selectedId: null }) }}>
-      <link rel="stylesheet" href={fontsUrl(getFont(doc.tokens.fontId))} />
+      <link rel="stylesheet" href={fontsUrl(fonts)} />
       <style>{DOC_CSS}</style>
       <div className="stage-wrap" style={{ width: width * scale, height: stageH || undefined }}>
         <div

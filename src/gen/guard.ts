@@ -1,4 +1,5 @@
 import type { Doc } from '../types'
+import { fontKey, fontSpec } from './fonts'
 
 export interface Sig { archetype: string; fontId: string; hueBucket: number }
 const KEY = 'hm.sigs'
@@ -6,7 +7,7 @@ export const GUARD_N = 6
 
 export const sigOf = (d: Pick<Doc, 'tokens' | 'meta'>): Sig => ({
   archetype: d.meta.archetype,
-  fontId: d.tokens.fontId,
+  fontId: fontKey(fontSpec(d.tokens)),
   hueBucket: Math.round(d.tokens.hue / 30) % 12,
 })
 

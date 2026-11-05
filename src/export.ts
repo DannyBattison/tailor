@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { fontsUrl, getFont } from './gen/fonts'
+import { fontSpec, fontsUrl } from './gen/fonts'
 import { DOC_CSS } from './render/css'
 import { DocView } from './render/Doc'
 import type { Doc } from './types'
@@ -8,7 +8,6 @@ import type { Doc } from './types'
 /** Standalone HTML: the same React components, the same stylesheet, rendered to a string. */
 export function exportHtml(doc: Doc, wire = false): string {
   const body = renderToStaticMarkup(createElement(DocView, { root: doc.root, tokens: doc.tokens, wire }))
-  const f = getFont(doc.tokens.fontId)
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -17,7 +16,7 @@ export function exportHtml(doc: Doc, wire = false): string {
 <title>${doc.meta.name.replace(/</g, '&lt;')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="${fontsUrl(f)}">
+<link rel="stylesheet" href="${fontsUrl(fontSpec(doc.tokens))}">
 <style>
 html,body{margin:0;background:${doc.tokens.palette.bg}}
 ${DOC_CSS}

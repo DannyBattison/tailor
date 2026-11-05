@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { generate } from '../src/gen/generate'
+import { fontKey } from '../src/gen/fonts'
 import { paletteIssues, isBannedHue } from '../src/gen/palette'
 import { DocView } from '../src/render/Doc'
 import { critique } from '../src/gen/critique'
@@ -19,7 +20,7 @@ for (const kind of ['marketing', 'app'] as const) {
     ok(JSON.stringify(strip(d.root)) === JSON.stringify(strip(again.root)), 'tree deterministic ' + s)
     const html = renderToStaticMarkup(createElement(DocView, { root: d.root, tokens: d.tokens }))
     ok(html.length > 800, 'renders html')
-    archs.add(d.meta.archetype); fonts.add(d.tokens.fontId); hues.add(Math.round(d.tokens.hue / 30)); sigs.add(d.tokens.signature)
+    archs.add(d.meta.archetype); fonts.add(fontKey(d.tokens.fonts!)); hues.add(Math.round(d.tokens.hue / 30)); sigs.add(d.tokens.signature)
     if (isBannedHue(d.tokens.hue) && d.tokens.palette.accent) bannedHue++
     if (paletteIssues(d.tokens.palette).length) contrastFails++
     const r = critique(d)
@@ -29,6 +30,7 @@ for (const kind of ['marketing', 'app'] as const) {
 function strip(n: any): any { return { type: n.type, props: n.props, children: n.children.map(strip) } }
 console.log({ archetypes: archs.size, fonts: fonts.size, hueBuckets: hues.size, signatures: sigs.size, bannedHue, contrastFails })
 ok(archs.size >= 10, 'all archetypes appear')
+ok(fonts.size >= 34, 'fonts vary across 40 seeds: ' + fonts.size)
 ok(bannedHue === 0, 'no blue-purple accents')
 ok(contrastFails === 0, 'palettes pass contrast')
 if (fail) { console.log(fail + ' failures'); process.exit(1) }
@@ -92,7 +94,7 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
   // each part's re-roll leaves the other parts alone
   const base = generate({ seed: 31, kind: 'marketing', mood: '' })
   const pal = RR.rerollToken(base, 'palette', 9)
-  if (pal.tokens.fontId !== base.tokens.fontId) { bad++; console.log('FAIL palette reroll touched fonts') }
+  if (JSON.stringify(pal.tokens.fonts) !== JSON.stringify(base.tokens.fonts)) { bad++; console.log('FAIL palette reroll touched fonts') }
   const lay = RR.rerollLayout(base, 12345)
   if (JSON.stringify(lay.tokens) !== JSON.stringify(base.tokens) || lay.meta.archetype === base.meta.archetype || partsOf(lay).text !== partsOf(base).text) { bad++; console.log('FAIL layout reroll semantics') }
   if (archetypeFor('marketing', partsOf(lay).layout) !== lay.meta.archetype) { bad++; console.log('FAIL archetype not derived from layout seed') }
@@ -156,4 +158,43 @@ import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
     if (kb > 60) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
   }
   console.log('export for AI ok')
+}
+
+// fonts: any two free Google fonts, sensibly paired, valid to request, never default-looking
+import { BANNED_FONTS, findFont, fontsUrl, genFonts, searchFonts } from '../src/gen/fonts'
+import { MOOD_NAMES } from '../src/gen/moods'
+{
+  let bad = 0
+  const heads = new Set<string>(), bodies = new Set<string>(), cats: Record<string, number> = {}
+  for (let sd = 0; sd < 1500; sd++) {
+    const mood = MOOD_NAMES[sd % MOOD_NAMES.length]
+    const f = genFonts(sd * 7 + 3, mood)
+    const h = findFont(f.heading.family), b = findFont(f.body.family)
+    if (!h || !b) { bad++; console.log('FAIL unknown family', f); continue }
+    if (BANNED_FONTS.includes(h.family.toLowerCase()) || BANNED_FONTS.includes(b.family.toLowerCase())) { bad++; console.log('FAIL banned font', f.heading.family, f.body.family) }
+    if (!h.weights.includes(f.heading.weight) || !f.body.weights.every((w) => b.weights.includes(w))) { bad++; console.log('FAIL weights not offered', f) }
+    if (h.family === b.family) { bad++; console.log('FAIL same font twice', h.family) }
+    if (!['serif', 'sans', 'mono'].includes(b.cat)) { bad++; console.log('FAIL body face is', b.cat, b.family) }
+    if (!/^https:\/\/fonts\.googleapis\.com\/css2\?(family=[A-Za-z0-9+]+:wght@[0-9;]+&?){1,2}&display=swap$/.test(fontsUrl(f))) { bad++; console.log('FAIL url', fontsUrl(f)) }
+    heads.add(h.family); bodies.add(b.family); cats[h.cat] = (cats[h.cat] ?? 0) + 1
+  }
+  // the whole catalogue is reachable, not a short list
+  if (heads.size < 300 || bodies.size < 100) { bad++; console.log('FAIL fonts too repetitive', heads.size, bodies.size) }
+  // serif headings usually get a sans body and vice versa (sensible contrast)
+  let contrast = 0, total = 0
+  for (let sd = 0; sd < 600; sd++) { const f = genFonts(sd, 'editorial'); if (f.heading.cat === 'serif' || f.heading.cat === 'sans') { total++; if (f.heading.cat !== f.body.cat) contrast++ } }
+  if (contrast / total < 0.6) { bad++; console.log('FAIL pairing contrast too low', contrast, total) }
+  // autocomplete: prefix matches come first
+  const hits = searchFonts('fraun')
+  if (hits[0]?.family !== 'Fraunces' || findFont(' fraunces ')?.family !== 'Fraunces' || findFont('Comic Neue Fake')) { bad++; console.log('FAIL search', hits.map((x) => x.family)) }
+  if (bad) process.exit(1)
+  console.log('fonts ok', { heads: heads.size, bodies: bodies.size, cats })
+}
+
+// shape re-rolls can land on every shadow (not stuck on hard)
+{
+  const seen = new Set<string>()
+  for (let i = 0; i < 300; i++) seen.add(RR.rerollToken(generate({ seed: i * 13 + 1, kind: 'marketing', mood: MOOD_NAMES[i % 10] }), 'shape', i * 31 + 5).tokens.shadow)
+  if (seen.size < 3) { console.log('FAIL shadow variety', [...seen]); process.exit(1) }
+  console.log('shadow variety ok')
 }

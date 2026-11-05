@@ -13,7 +13,7 @@ export function rerollToken(doc: Doc, part: TokenPart, seed: number): Doc {
   const next = withParts(doc, { [part]: seed })
   const fresh = tokensFromParts(partsOf(next), doc.meta.mood, { bgBold: doc.tokens.bgBold, mode: doc.tokens.mode, kind: doc.meta.kind })
   if (part === 'palette') return { ...next, tokens: { ...next.tokens, ...paletteGroup(fresh) } }
-  if (part === 'fonts') return { ...next, tokens: { ...next.tokens, fontId: fresh.fontId } }
+  if (part === 'fonts') return { ...next, tokens: { ...next.tokens, fonts: fresh.fonts, fontId: undefined } }
   // the signature move also edits the tree (marquee band, inverted section)
   return withSignature({ ...next, tokens: { ...next.tokens, ...shapeGroup(fresh) } }, fresh.signature)
 }

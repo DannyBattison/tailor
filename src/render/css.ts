@@ -1,4 +1,4 @@
-import { fontStacks, getFont } from '../gen/fonts'
+import { fontSpec, fontStacks } from '../gen/fonts'
 import type { Tokens } from '../types'
 
 /** Token → CSS custom properties (set inline on the doc root, so many docs can coexist). */
@@ -13,7 +13,8 @@ export function typeStep(t: Tokens, n: number) {
 }
 
 export function tokenVars(t: Tokens): Record<string, string> {
-  const f = fontStacks(getFont(t.fontId))
+  const spec = fontSpec(t)
+  const f = fontStacks(spec)
   const p = t.palette
   const step = (n: number) => typeStep(t, n).css
   const shadow = t.shadow === 'hard' ? `${Math.max(4, t.border * 2.5)}px ${Math.max(4, t.border * 2.5)}px 0 var(--ink)` : t.shadow === 'soft' ? '0 10px 30px -10px color-mix(in oklab, var(--ink) 35%, transparent)' : 'none'
@@ -22,7 +23,7 @@ export function tokenVars(t: Tokens): Record<string, string> {
     '--accent': p.accent, '--accent2': p.accent2, '--on-accent': p.onAccent, '--accent-text': p.accentText,
     '--inverse': p.inverse, '--on-inverse': p.onInverse,
     '--f-display': f.display, '--f-body': f.body, '--f-mono': f.mono,
-    '--w-display': String(getFont(t.fontId).displayWeight),
+    '--w-display': String(spec.heading.weight),
     '--radius': `${t.radius}px`, '--radius-l': `${Math.min(t.radius, 22)}px`, '--bw': `${t.border}px`, '--shadow': shadow,
     '--d': String(t.density), '--track': `${t.tracking}em`, '--case': t.headingCase === 'none' ? 'none' : t.headingCase,
     '--fs-s': `calc(${step(0)} * 0.85)`, '--fs-m': step(0), '--fs-l': step(1), '--fs-3': step(2), '--fs-2': step(3),

@@ -1,12 +1,13 @@
 import { useRef } from 'react'
 import { walk, updateProps } from '../lib/tree'
-import { FONT_PAIRS, getFont } from '../gen/fonts'
+import { GOOGLE_FONTS, bodyFace, fontSpec, headingFace } from '../gen/fonts'
+import { FontInput } from './FontInput'
 import { withSignature } from '../gen/generate'
 import { paletteIssues, paletteOf } from '../gen/palette'
 import { paletteFromImage } from '../imagePalette'
 import { contrast, hexToOklch } from '../lib/color'
 import { mutate, toast, useStore } from '../store'
-import type { Palette, Signature, Tokens } from '../types'
+import type { FontSpec, Palette, Signature, Tokens } from '../types'
 
 const SWATCHES: [keyof Palette, string][] = [['bg', 'Background'], ['surface', 'Surface'], ['ink', 'Ink'], ['muted', 'Muted'], ['line', 'Line'], ['accent', 'Accent'], ['accent2', 'Accent 2'], ['inverse', 'Inverse']]
 const SIGS: Signature[] = ['hardShadow', 'oversized', 'ruled', 'grain', 'tilted', 'inverted', 'marquee']
@@ -32,6 +33,8 @@ export function Design() {
     return { ...d, root }
   })
   const setBold = (v: number) => mutate((d) => (d.tokens.spec ? { ...d, tokens: { ...d.tokens, bgBold: v, palette: paletteOf(d.tokens.spec, v, d.tokens.mode) } } : d), 'bgbold', true)
+  const fonts = fontSpec(t)
+  const setFonts = (spec: FontSpec) => mutate((d) => ({ ...d, tokens: { ...d.tokens, fonts: spec, fontId: undefined } }), 'fonts-custom')
   const issues = paletteIssues(t.palette)
   const slider = (label: string, key: keyof Tokens, min: number, max: number, step: number, fmt: (v: number) => string = String) => (
     <div className="field">
@@ -71,11 +74,10 @@ export function Design() {
       </div>
       <p className="hint">Switches every image. placehold.co images use your palette and need a network connection; wireframe mode still shows crossed boxes.</p>
 
-      <label className="lbl">Fonts</label>
-      <select value={t.fontId} onChange={(e) => set({ fontId: e.target.value }, 'font')}>
-        {FONT_PAIRS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-      </select>
-      <p className="meta">{getFont(t.fontId).tags.join(' · ')}</p>
+      <label className="lbl">Fonts <em>two Google fonts</em></label>
+      <FontInput label="Heading" value={fonts.heading.family} onPick={(g) => setFonts({ heading: headingFace(g), body: fonts.body })} />
+      <FontInput label="Body" value={fonts.body.family} onPick={(g) => setFonts({ heading: fonts.heading, body: bodyFace(g) })} />
+      <p className="hint">Type to search {GOOGLE_FONTS.length} free Google fonts. Re-roll Fonts in the Generate tab for a seeded pairing.</p>
 
       <label className="lbl">Shape &amp; rhythm</label>
       {slider('Roundness', 'radius', 0, 40, 1, (v) => (v >= 40 ? 'pill' : v + 'px'))}

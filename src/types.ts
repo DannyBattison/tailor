@@ -38,20 +38,11 @@ export type ShadowKind = 'none' | 'soft' | 'hard'
 export type Signature = 'hardShadow' | 'oversized' | 'ruled' | 'grain' | 'tilted' | 'inverted' | 'marquee'
 export type HeadingCase = 'none' | 'uppercase' | 'lowercase'
 
-export interface FontPair {
-  id: string
-  name: string
-  display: string
-  body: string
-  mono?: string
-  /** google fonts css2 `family=` fragments */
-  gf: string[]
-  tags: string[]
-  displayWeight: number
-  displayFallback: 'serif' | 'sans-serif'
-  bodyFallback: 'serif' | 'sans-serif'
-  caps?: boolean // happy being uppercase
-}
+export type FontCat = 'serif' | 'sans' | 'display' | 'script' | 'mono'
+export interface HeadingFace { family: string; cat: FontCat; weight: number }
+export interface BodyFace { family: string; cat: FontCat; weights: number[] }
+/** Exactly two Google fonts: one for headings, one for everything else. */
+export interface FontSpec { heading: HeadingFace; body: BodyFace }
 
 export interface Tokens {
   palette: Palette
@@ -63,7 +54,9 @@ export interface Tokens {
   /** explicit light/dark choice; absent = whatever the palette naturally is */
   mode?: 'light' | 'dark'
   hue: number
-  fontId: string
+  fonts?: FontSpec
+  /** designs saved before free-form fonts: id of a curated pair */
+  fontId?: string
   radius: number
   border: number
   shadow: ShadowKind

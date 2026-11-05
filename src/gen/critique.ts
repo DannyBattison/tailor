@@ -1,7 +1,7 @@
 import { hexToOklch } from '../lib/color'
 import { walk } from '../lib/tree'
 import type { DNode, Doc } from '../types'
-import { BANNED_FONTS, getFont } from './fonts'
+import { BANNED_FONTS, fontSpec } from './fonts'
 import { isBannedHue, paletteIssues } from './palette'
 
 export interface Issue { id: string; level: 'fail' | 'warn' | 'pass'; title: string; detail: string; nodeId?: string }
@@ -23,9 +23,9 @@ export function critique(doc: Doc): Issue[] {
   if (ci.length) ci.forEach((c, i) => out.push({ id: 'contrast-' + i, level: 'fail', title: 'Contrast too low', detail: c }))
   else out.push({ id: 'contrast', level: 'pass', title: 'Contrast', detail: 'Ink, muted, accent and inverse text all meet WCAG AA or better.' })
 
-  const f = getFont(t.fontId)
-  const bad = [f.display, f.body].filter((n) => BANNED_FONTS.includes(n.toLowerCase()))
-  out.push(bad.length ? { id: 'font-banned', level: 'fail', title: 'Banned font', detail: `${bad.join(', ')} is a default-looking face.` } : { id: 'font-ok', level: 'pass', title: 'Fonts', detail: `${f.display} with ${f.body}: curated pairing.` })
+  const f = fontSpec(t)
+  const bad = [f.heading.family, f.body.family].filter((n) => BANNED_FONTS.includes(n.toLowerCase()))
+  out.push(bad.length ? { id: 'font-banned', level: 'fail', title: 'Banned font', detail: `${bad.join(', ')} is a default-looking face.` } : { id: 'font-ok', level: 'pass', title: 'Fonts', detail: `${f.heading.family} with ${f.body.family}.` })
 
   const hot = [t.palette.accent, t.palette.accent2].map(hexToOklch).filter((c) => c.c > 0.1 && isBannedHue(c.h))
   out.push(hot.length ? { id: 'hue-banned', level: 'fail', title: 'Blue-to-purple accent', detail: 'The AI-default hue band (250–338°) is in use. Choose another hue unless it is deliberate.' } : { id: 'hue-ok', level: 'pass', title: 'Hue', detail: `Accent hue ${Math.round(hexToOklch(t.palette.accent).h)}° sits outside the blue→purple default.` })

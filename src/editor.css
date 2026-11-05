@@ -110,3 +110,9 @@ details.content>*:not(summary){margin-left:8px;margin-right:8px}
 details.content>*:not(summary):not(:first-of-type){margin-top:6px}
 .seedrow{align-items:center}
 .seedbox{font:12px/1.35 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.04em;word-break:break-all;resize:none}
+
+.fontfield{position:relative}
+.ac{list-style:none;margin:0;padding:0;position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border:1px solid var(--c-ink);box-shadow:3px 3px 0 var(--c-ink);max-height:240px;overflow:auto}
+.ac li{display:flex;justify-content:space-between;gap:8px;padding:4px 7px;cursor:pointer}
+.ac li.hi{background:var(--c-ink);color:#fff}
+.ac li small{opacity:.6;font-size:10.5px}

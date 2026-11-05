@@ -1,6 +1,6 @@
 import { stageRng } from '../lib/rng'
 import type { Locks, PartSeeds, Tokens } from '../types'
-import { FONT_PAIRS } from './fonts'
+import { fontSpec, genFonts } from './fonts'
 import { MOODS } from './moods'
 import { DEFAULT_BG_BOLD, genPalette } from './palette'
 
@@ -13,12 +13,6 @@ export function genPaletteTokens(seed: number, mood: string, bgBold = DEFAULT_BG
   return { palette, hue, spec, bgBold, mode, paletteStrategy: strategy as string }
 }
 
-export function genFontId(seed: number, mood: string): string {
-  const rng = stageRng(seed, 'fonts')
-  const pool = FONT_PAIRS.filter((f) => f.tags.includes(mood))
-  return rng.pick(pool.length ? pool : FONT_PAIRS).id
-}
-
 /** Mood ranges stay the bias, but stretched 40% of the way to the global range so re-rolls move visibly. */
 const widen = ([lo, hi]: [number, number], [glo, ghi]: [number, number]): [number, number] => [lo + (glo - lo) * 0.4, hi + (ghi - hi) * 0.4]
 
@@ -26,7 +20,8 @@ export function genShape(seed: number, mood: string) {
   const rng = stageRng(seed, 'shape')
   const m = MOODS[mood] ?? MOODS.editorial
   const signature = rng.pick(m.signatures)
-  let shadow = rng.pick(m.shadow)
+  // the mood's shadows are favoured 3:1, but any shadow can come up, so a re-roll isn't stuck on one
+  let shadow = rng.weighted((['none', 'soft', 'hard'] as const).map((k) => [k, m.shadow.includes(k) ? 3 : 1] as const))
   let border = rng.pick(m.border)
   if (signature === 'hardShadow') { shadow = 'hard'; border = Math.max(2, border) }
   if (signature === 'ruled') border = Math.max(1.5, border)
@@ -63,7 +58,7 @@ export interface TokenOpts { bgBold?: number; mode?: 'light' | 'dark'; kind?: 'm
 export function tokensFromParts(parts: PartSeeds, mood: string, o: TokenOpts = {}): Tokens {
   const t: Tokens = {
     ...genPaletteTokens(parts.palette, mood, o.bgBold ?? DEFAULT_BG_BOLD, o.mode),
-    fontId: genFontId(parts.fonts, mood),
+    fonts: genFonts(parts.fonts, mood),
     ...genShape(parts.shape, mood),
   }
   const fixed = fixSignature(t)
@@ -79,7 +74,7 @@ export function genTokens(parts: PartSeeds, mood: string, o: TokenOpts & { prev?
   return fixSignature({
     ...t,
     ...(locks.palette ? paletteGroup(prev) : {}),
-    ...(locks.fonts ? { fontId: prev.fontId } : {}),
+    ...(locks.fonts ? { fonts: fontSpec(prev), fontId: undefined } : {}),
     ...(locks.shape ? shapeGroup(prev) : {}),
   })
 }

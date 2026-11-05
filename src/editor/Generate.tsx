@@ -3,7 +3,7 @@ import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, rero
 import { archetypesFor } from '../gen/build'
 import { designCode } from '../gen/code'
 import { copyText } from '../export'
-import { getFont, loadFont } from '../gen/fonts'
+import { fontSpec, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
 import { paletteFromImage } from '../imagePalette'
 import { DocView } from '../render/Doc'
@@ -82,8 +82,8 @@ export function Generate() {
       </div>
       <textarea className="seedbox" rows={2} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Six 5-digit blocks (palette, fonts, shape, layout, text, backdrops) and a setup block. Recreates this design exactly." />
       <p className="hint">The seed is seven 5-digit blocks: palette, fonts, shape, layout, text, backdrops, then setup (mood, product, boldness, mode). Re-rolling a part rewrites only its block, and loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
-      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
       <div className="parts">{rows.map(rowView)}</div>
+      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
 
       <p className="hint">The page on the canvas is a specimen with lorem ipsum text. The export is the design system; your AI writes the real copy.</p>
       <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { onImage(e.target.files?.[0]); e.target.value = '' }} />
@@ -94,7 +94,7 @@ export function Generate() {
           <label className="lbl">Pick a direction</label>
           <div className="variants">
             {ui.variants.map((v, i) => {
-              loadFont(getFont(v.tokens.fontId))
+              loadFont(fontSpec(v.tokens))
               const name = archetypesFor(v.meta.kind).find((a) => a.id === v.meta.archetype)?.name
               return (
                 <button key={i} className="variant" onClick={() => pickVariant(v)} title={`${name} · seed ${designCode(v)}`}>

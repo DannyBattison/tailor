@@ -1,7 +1,7 @@
 import { designCode } from './gen/code'
 import { paletteOf } from './gen/palette'
 import { DOC_CSS, tokenVars, typeStep } from './render/css'
-import { fontsUrl, fontStacks, getFont } from './gen/fonts'
+import { fontSpec, fontsUrl, fontStacks } from './gen/fonts'
 import { contrast, hexToOklch } from './lib/color'
 import { placeholdColors, placeholdUrl } from './render/placehold'
 import { walk } from './lib/tree'
@@ -96,7 +96,7 @@ const APP_PAGES = [
 /** A self-contained description of the design, meant to be handed to another AI or developer. */
 export function designSystem(doc: Doc) {
   const t = doc.tokens
-  const f = getFont(t.fontId)
+  const f = fontSpec(t)
   const stacks = fontStacks(f)
   const pal = t.palette
   const roles: Record<string, string> = {
@@ -129,9 +129,9 @@ export function designSystem(doc: Doc) {
     alternateMode: doc.tokens.spec ? (() => { const cur = doc.tokens.mode ?? (doc.tokens.spec!.dark ? 'dark' : 'light'); const other = cur === 'dark' ? 'light' : 'dark'; return { mode: other, colors: paletteOf(doc.tokens.spec!, doc.tokens.bgBold, other) } })() : null,
     contrast: [pair('ink', 'bg'), pair('muted', 'bg'), pair('onAccent', 'accent'), pair('accentText', 'bg'), pair('onInverse', 'inverse')],
     typography: {
-      display: { family: f.display, weight: f.displayWeight, stack: stacks.display, case: t.headingCase, letterSpacing: `${t.tracking}em`, lineHeight: 1.04 },
-      body: { family: f.body, stack: stacks.body, lineHeight: 1.55 },
-      mono: { stack: stacks.mono, use: 'tags, labels, table headers, captions (uppercase, 0.06–0.08em tracking)' },
+      display: { family: f.heading.family, weight: f.heading.weight, category: f.heading.cat, stack: stacks.display, case: t.headingCase, letterSpacing: `${t.tracking}em`, lineHeight: 1.04 },
+      body: { family: f.body.family, weights: f.body.weights, category: f.body.cat, stack: stacks.body, lineHeight: 1.55 },
+      mono: { stack: stacks.mono, use: 'tags, labels, table headers, captions (uppercase, 0.06–0.08em tracking). System monospace: the design loads only its two Google fonts.' },
       googleFonts: fontsUrl(f),
       scaleRatio: t.scale,
       sizes,
