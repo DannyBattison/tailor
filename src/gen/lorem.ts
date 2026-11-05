@@ -57,3 +57,16 @@ export function loremApp(seed: number): AppContent {
     ],
   }
 }
+
+/** Unseeded lorem for elements the user drags in (a fresh bit of text every time). */
+export function loremBits() {
+  const gen = new LoremIpsum({ wordsPerSentence: { min: 8, max: 14 } })
+  const w = (n: number) => gen.generateWords(n)
+  return {
+    label: (n = 1) => w(n).split(' ').map(cap).join(' '),
+    phrase: (n: number) => cap(w(n)),
+    sentence: () => gen.generateSentences(1),
+    short: () => cap(w(9)) + '.',
+    number: () => String(Math.floor(Math.random() * 900) + 10),
+  }
+}

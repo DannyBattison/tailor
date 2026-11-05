@@ -1,3 +1,4 @@
+import { loremBits } from '../gen/lorem'
 import { mk } from '../lib/tree'
 import type { DNode, NodeType } from '../types'
 
@@ -125,24 +126,24 @@ export const COLUMN_PRESETS: [string, string][] = [
 ]
 
 export const ELEMENTS: { type: string; label: string; make: () => DNode }[] = [
-  { type: 'section', label: 'Section', make: () => mk('section', { pad: 'm' }, [mk('heading', { text: 'New section', size: 'l', level: 2 })]) },
-  { type: 'row', label: 'Row', make: () => mk('box', { dir: 'row', cols: '1fr 1fr', gap: 1.2 }, [mk('text', { text: 'Left column' }), mk('text', { text: 'Right column' })]) },
+  { type: 'section', label: 'Section', make: () => { const L = loremBits(); return mk('section', { pad: 'm' }, [mk('heading', { text: L.label(3), size: 'l', level: 2 }), mk('text', { text: L.sentence() })]) } },
+  { type: 'row', label: 'Row', make: () => { const L = loremBits(); return mk('box', { dir: 'row', cols: '1fr 1fr', gap: 1.2 }, [mk('text', { text: L.sentence() }), mk('text', { text: L.sentence() })]) } },
   { type: 'col', label: 'Column', make: () => mk('box', { dir: 'col', gap: 0.8 }) },
-  { type: 'grid', label: 'Grid', make: () => mk('box', { dir: 'grid', cols: 3, gap: 1 }, [1, 2, 3].map((i) => mk('box', { dir: 'col', variant: 'outline', pad: 1 }, [mk('text', { text: 'Cell ' + i })]))) },
-  { type: 'card', label: 'Card', make: () => mk('box', { dir: 'col', variant: 'card', pad: 1.2, gap: 0.6, bg: 'surface' }, [mk('heading', { text: 'Card title', size: 's', level: 3 }), mk('text', { text: 'A line or two of supporting copy.', muted: true })]) },
-  { type: 'heading', label: 'Heading', make: () => mk('heading', { text: 'A new heading', size: 'l', level: 2 }) },
-  { type: 'text', label: 'Text', make: () => mk('text', { text: 'Write something specific here.' }) },
-  { type: 'button', label: 'Button', make: () => mk('button', { label: 'Click here', variant: 'solid' }) },
+  { type: 'grid', label: 'Grid', make: () => { const L = loremBits(); return mk('box', { dir: 'grid', cols: 3, gap: 1 }, [1, 2, 3].map(() => mk('box', { dir: 'col', variant: 'outline', pad: 1 }, [mk('text', { text: L.short() })]))) } },
+  { type: 'card', label: 'Card', make: () => { const L = loremBits(); return mk('box', { dir: 'col', variant: 'card', pad: 1.2, gap: 0.6, bg: 'surface' }, [mk('heading', { text: L.label(3), size: 's', level: 3 }), mk('text', { text: L.short(), muted: true })]) } },
+  { type: 'heading', label: 'Heading', make: () => mk('heading', { text: loremBits().label(3), size: 'l', level: 2 }) },
+  { type: 'text', label: 'Text', make: () => mk('text', { text: loremBits().sentence() }) },
+  { type: 'button', label: 'Button', make: () => mk('button', { label: loremBits().label(2), variant: 'solid' }) },
   { type: 'image', label: 'Image', make: () => mk('image', { art: 'blocks', seed: Math.floor(Math.random() * 9999), ratio: '4/3', tone: 1 }) },
-  { type: 'nav', label: 'Nav', make: () => mk('nav', { brand: 'Brand', links: ['One', 'Two', 'Three'], cta: 'Go', variant: 'bar' }) },
-  { type: 'tag', label: 'Tag', make: () => mk('tag', { text: 'New' }) },
-  { type: 'stat', label: 'Stat', make: () => mk('stat', { value: '42', label: 'something measured' }) },
-  { type: 'table', label: 'Table', make: () => mk('table', { cols: ['Name', 'Status'], rows: ['First|Done', 'Second|Open'] }) },
-  { type: 'list', label: 'List', make: () => mk('list', { variant: 'ruled', items: ['First item|note', 'Second item|note', 'Third item|note'] }) },
+  { type: 'nav', label: 'Nav', make: () => { const L = loremBits(); return mk('nav', { brand: L.label(1), links: [L.label(1), L.label(1), L.label(1)], cta: L.label(2), variant: 'bar' }) } },
+  { type: 'tag', label: 'Tag', make: () => mk('tag', { text: loremBits().label(1) }) },
+  { type: 'stat', label: 'Stat', make: () => { const L = loremBits(); return mk('stat', { value: L.number(), label: L.phrase(3).toLowerCase() }) } },
+  { type: 'table', label: 'Table', make: () => { const L = loremBits(); return mk('table', { cols: [L.label(1), L.label(1), L.label(1)], rows: [0, 1, 2].map(() => `${L.label(1)}|${L.phrase(1)}|${L.number()}`) }) } },
+  { type: 'list', label: 'List', make: () => { const L = loremBits(); return mk('list', { variant: 'ruled', items: [0, 1, 2].map(() => `${L.label(2)}|${L.phrase(1)}`) }) } },
   { type: 'divider', label: 'Divider', make: () => mk('divider', { variant: 'thin' }) },
-  { type: 'input', label: 'Input', make: () => mk('input', { label: 'Field', kind: 'text', placeholder: 'Type here' }) },
-  { type: 'marquee', label: 'Marquee', make: () => mk('marquee', { items: ['One thing', 'Another thing', 'A third thing'] }) },
-  { type: 'quote', label: 'Quote', make: () => mk('quote', { text: 'Something a customer actually said.', who: 'Someone, somewhere', mark: true }) },
+  { type: 'input', label: 'Input', make: () => { const L = loremBits(); return mk('input', { label: L.label(1), kind: 'text', placeholder: L.phrase(2) }) } },
+  { type: 'marquee', label: 'Marquee', make: () => { const L = loremBits(); return mk('marquee', { items: [L.label(2), L.label(2), L.label(2)] }) } },
+  { type: 'quote', label: 'Quote', make: () => { const L = loremBits(); return mk('quote', { text: L.sentence(), who: `${L.label(2)}, ${L.phrase(1).toLowerCase()}`, mark: true }) } },
 ]
 
 export const nodeLabel = (n: DNode): string => {
