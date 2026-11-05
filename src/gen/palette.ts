@@ -19,6 +19,32 @@ export type { PaletteSpec }
 
 export const DEFAULT_BG_BOLD = 0.2
 
+const clamp01 = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+/** The same palette seen in the other mode: hues are kept, lightness is flipped and accents re-fitted. */
+export function withMode(spec: PaletteSpec, mode?: 'light' | 'dark'): PaletteSpec {
+  if (!mode || (mode === 'dark') === spec.dark) return spec
+  const h = spec.bg.h
+  if (mode === 'dark')
+    return {
+      dark: true, surfaceShift: 0.05,
+      bg: { l: 0.22, c: Math.min(spec.bg.c, 0.045), h },
+      ink: { l: 0.95, c: 0.02, h },
+      accent: { l: clamp01(spec.accent.l + 0.2, 0.68, 0.82), c: spec.accent.c * 0.85, h: spec.accent.h },
+      accent2: { l: 0.32, c: 0.06, h: spec.accent2.h },
+    }
+  return {
+    dark: false, surfaceShift: -0.04,
+    bg: { l: 0.95, c: Math.min(spec.bg.c, 0.04), h },
+    ink: { l: 0.2, c: 0.04, h },
+    accent: { l: clamp01(spec.accent.l - 0.22, 0.45, 0.58), c: Math.min(0.2, spec.accent.c * 1.1), h: spec.accent.h },
+    accent2: { l: 0.86, c: 0.06, h: spec.accent2.h },
+  }
+}
+
+/** Final palette from a spec, honouring mode and background boldness. */
+export const paletteOf = (spec: PaletteSpec, bold = DEFAULT_BG_BOLD, mode?: 'light' | 'dark') => buildPalette(applyBgBold(withMode(spec, mode), bold))
+
 /** Fade the background from quiet (near-neutral, barely tinted) up to the spec's full colour. */
 export function applyBgBold(spec: PaletteSpec, bold: number): PaletteSpec {
   const t = Math.min(1, Math.max(0, bold))
@@ -74,6 +100,7 @@ export interface PaletteOpts {
   hueRange?: [number, number]
   darkChance?: number
   bgBold?: number
+  mode?: 'light' | 'dark'
 }
 
 export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; hue: number; strategy: Strategy; spec: PaletteSpec } {
@@ -132,7 +159,7 @@ export function genPalette(rng: Rng, o: PaletteOpts = {}): { palette: Palette; h
         accent2: { l: rng.range(0.86, 0.92), c: rng.range(0.06, 0.1), h: safeHue(hue + rng.pick([-20, 20])) }, dark: false,
       }
   }
-  const palette = buildPalette(applyBgBold(spec, o.bgBold ?? DEFAULT_BG_BOLD))
+  const palette = paletteOf(spec, o.bgBold ?? DEFAULT_BG_BOLD, o.mode)
   return { palette, hue: hexToOklch(palette.accent).h, strategy, spec }
 }
 

@@ -22,6 +22,9 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     align,
     { key: 'width', label: 'Width', type: 'select', options: o('full') },
     { key: 'gap', label: 'Gap', type: 'number', min: 0, max: 4, step: 0.2 },
+    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo') },
+    { key: 'bdStrength', label: 'Backdrop strength', type: 'select', options: o('strong') },
+    { key: 'bdSide', label: 'Split side', type: 'select', options: o('right') },
   ],
   box: [
     { key: 'dir', label: 'Direction', type: 'select', options: [['col', 'column'], ['row', 'row'], ['grid', 'grid']] },
@@ -33,6 +36,9 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     align,
     { key: 'valign', label: 'Vertical', type: 'select', options: o('start', 'center', 'end', 'stretch') },
     { key: 'keep', label: 'Keep columns on mobile', type: 'toggle' },
+    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo') },
+    { key: 'bdStrength', label: 'Backdrop strength', type: 'select', options: o('strong') },
+    { key: 'bdSide', label: 'Split side', type: 'select', options: o('right') },
   ],
   heading: [
     { key: 'text', label: 'Text', type: 'long' },

@@ -1,3 +1,4 @@
+import { paletteOf } from './gen/palette'
 import { DOC_CSS, tokenVars, typeStep } from './render/css'
 import { fontsUrl, fontStacks, getFont } from './gen/fonts'
 import { contrast, hexToOklch } from './lib/color'
@@ -61,6 +62,8 @@ export function designSystem(doc: Doc) {
     seed: doc.meta.seed,
     colors,
     backgroundBoldness: doc.tokens.bgBold ?? null,
+    mode: doc.tokens.mode ?? (doc.tokens.spec?.dark ? 'dark' : 'light'),
+    alternateMode: doc.tokens.spec ? (() => { const cur = doc.tokens.mode ?? (doc.tokens.spec!.dark ? 'dark' : 'light'); const other = cur === 'dark' ? 'light' : 'dark'; return { mode: other, colors: paletteOf(doc.tokens.spec!, doc.tokens.bgBold, other) } })() : null,
     contrast: [pair('ink', 'bg'), pair('muted', 'bg'), pair('onAccent', 'accent'), pair('accentText', 'bg'), pair('onInverse', 'inverse')],
     typography: {
       display: { family: f.display, weight: f.displayWeight, stack: stacks.display, case: t.headingCase, letterSpacing: `${t.tracking}em`, lineHeight: 1.04 },

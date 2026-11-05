@@ -60,6 +60,8 @@ export interface Tokens {
   spec?: PaletteSpec
   /** 0 = near-neutral paper (or near-black), 1 = the strategy's full background colour */
   bgBold?: number
+  /** explicit light/dark choice; absent = whatever the palette naturally is */
+  mode?: 'light' | 'dark'
   hue: number
   fontId: string
   radius: number

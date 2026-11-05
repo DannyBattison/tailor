@@ -80,3 +80,20 @@ import { hexToOklch } from '../src/lib/color'
   if (fails) { console.log('FAIL bg boldness', fails); process.exit(1) }
   console.log('bg boldness ok')
 }
+
+// light/dark: both versions of every palette stay legible and keep their hue
+import { paletteOf } from '../src/gen/palette'
+import { luminance } from '../src/lib/color'
+{
+  let fails = 0
+  for (let s = 1; s <= 80; s++) {
+    const d = generate({ seed: s * 13, kind: 'marketing', mood: '', brief: '' })
+    for (const mode of ['light', 'dark'] as const) {
+      const p = paletteOf(d.tokens.spec!, 0.2, mode)
+      if (issues2(p).length) fails++
+      if ((luminance(p.bg) < 0.2) !== (mode === 'dark')) fails++
+    }
+  }
+  if (fails) { console.log('FAIL light/dark', fails); process.exit(1) }
+  console.log('light/dark ok')
+}

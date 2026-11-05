@@ -25,6 +25,34 @@ const img = (x: Ctx, ratio: string, extra: Props = {}) =>
   mk('image', { art: x.rng.pick(x.c.art.length ? x.c.art : [...ART_KINDS]), seed: x.rng.int(1, 9999), tone: x.rng.weighted<number>([[0, 4], [1, 4], [2, 1.5], [3, 1]]), ratio, ...extra })
 const flip = (x: Ctx, a: DNode, b: DNode): [DNode, DNode] => (x.rng.chance(0.5) ? [a, b] : [b, a])
 
+// ---------- backdrops ----------
+type BdRole = 'hero' | 'cta' | 'quote' | 'stats' | 'card'
+const BD_KEYS = ['backdrop', 'bdStrength', 'bdSide', 'bdArt', 'bdSeed', 'bdTone', 'bdGen', 'bdRole', 'bdFlat']
+const BD_WEIGHTS: Record<BdRole, [string, number][]> = {
+  hero: [['', 2], ['grid', 1.5], ['dots', 1.5], ['hatch', 1], ['wash', 2.2], ['split', 2.5], ['art', 1.8], ['photo', 1]],
+  cta: [['', 1], ['art', 2], ['hatch', 1.5], ['dots', 1.5], ['split', 1]],
+  quote: [['', 2], ['wash', 2], ['dots', 1], ['grid', 1]],
+  stats: [['', 2], ['dots', 1], ['hatch', 1]],
+  card: [['', 5], ['dots', 1], ['hatch', 1], ['wash', 1]],
+}
+
+/** Choose a backdrop for a hero/cta/etc. `bg` is the element's own fill; `flat` forbids layouts that already carry an image. */
+export function backdropProps(rng: Rng, role: BdRole, bg?: string, flat = false): Props {
+  const loud = bg === 'accent' || bg === 'inverse'
+  const pool = BD_WEIGHTS[role].filter(([k]) => !(flat && ['art', 'photo', 'split'].includes(k)) && !(loud && ['wash', 'split', 'photo', 'grid'].includes(k)))
+  const kind = rng.weighted(pool)
+  const out: Props = { bdGen: true, bdRole: role, bdFlat: flat || undefined }
+  if (!kind) return out
+  out.backdrop = kind
+  if (kind === 'split') out.bdSide = rng.pick(['left', 'right'])
+  if (kind === 'art') { out.bdArt = rng.pick(['blocks', 'stripes', 'arches', 'dots', 'waves', 'sun', 'rings']); out.bdSeed = rng.int(1, 9999); out.bdTone = loud ? 1 : rng.pick([0, 1]) }
+  if (kind === 'photo') out.bdTone = rng.pick([0, 1])
+  if (rng.chance(0.25) && kind !== 'photo') out.bdStrength = 'strong'
+  return out
+}
+export const clearBackdrop = (): Props => Object.fromEntries(BD_KEYS.map((k) => [k, undefined]))
+const withBd = (x: Ctx, n: DNode, role: BdRole, flat = false): DNode => { n.props = { ...n.props, ...backdropProps(x.rng, role, n.props.bg, flat) }; return n }
+
 // ---------- marketing sections ----------
 type Builder = (x: Ctx) => DNode
 export const SECTIONS: Record<string, Builder> = {
@@ -85,7 +113,7 @@ export const SECTIONS: Record<string, Builder> = {
     const s = x.c.stats
     const q = x.c.quotes[0]
     const tiles: DNode[] = [
-      col([T(f[0].title, { variant: 'accent' }), H(f[0].body, 's', 3)], { variant: 'card', pad: 1.2, gap: 0.8, span: spans[0], bg: 'surface', minh: 150 }),
+      withBd(x, col([T(f[0].title, { variant: 'accent' }), H(f[0].body, 's', 3)], { variant: 'card', pad: 1.2, gap: 0.8, span: spans[0], bg: 'surface', minh: 150 }), 'card'),
       col([mk('stat', { value: s[0].value, label: s[0].label, size: 'l' })], { variant: 'card', pad: 1.2, span: spans[1], bg: 'accent', justify: 'between', minh: 150 }),
       img(x, '4/3', { span: spans[2], minh: 150 }),
       img(x, '16/9', { span: spans2[0], shape: x.rng.pick([undefined, 'pill']) }),
@@ -141,6 +169,13 @@ export const SECTIONS: Record<string, Builder> = {
       mk('divider', { variant: 'heavy' }),
       row(x.rng.pick(['2fr 1fr 1fr', '1fr 1fr 2fr', '3fr 2fr']), [col([H(x.c.name, 's', 3), P(x.c.footer, { muted: true, size: 's' })], { gap: 0.4 }), mk('list', { variant: 'bullets', items: x.c.nav }), P('Made by hand, in a few weeks.\nNo cookies.'.replace('\n', ' '), { muted: true, size: 's' })], { gap: 2 }),
     ]),
+}
+
+for (const key of Object.keys(SECTIONS)) {
+  const role = key.split('.')[0]
+  if (!['hero', 'cta', 'quote', 'stats'].includes(key.split('.')[0])) continue
+  const build = SECTIONS[key]
+  SECTIONS[key] = (x) => withBd(x, build(x), role as BdRole, key === 'hero.split' || key === 'hero.dense')
 }
 
 export const roleOf = (build: string) => (build.startsWith('app.') ? build.replace(/\d$/, '') : build.split('.')[0])

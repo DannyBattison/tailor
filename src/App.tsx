@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { deleteSelected, duplicateSelected } from './actions'
+import { deleteSelected, duplicateSelected, setMode } from './actions'
 import { MODELS, PROVIDER_LABEL, aiReady, bridge, type Provider } from './ai'
 import { Canvas } from './editor/Canvas'
 import { CritiquePanel } from './editor/CritiquePanel'
@@ -31,6 +31,12 @@ function TopBar() {
       </div>
       <div className="group seg">
         {(['desktop', 'tablet', 'mobile'] as Viewport[]).map((v) => <button key={v} className={ui.viewport === v ? 'on' : ''} onClick={() => setUI({ viewport: v })}>{v}</button>)}
+      </div>
+      <div className="group seg" title={doc.tokens.spec ? 'Light or dark version of this palette' : 'Palette was edited by hand; re-roll it to switch modes'}>
+        {(['light', 'dark'] as const).map((m) => {
+          const cur = doc.tokens.mode ?? (doc.tokens.spec?.dark ? 'dark' : 'light')
+          return <button key={m} disabled={!doc.tokens.spec} className={cur === m ? 'on' : ''} onClick={() => setMode(m)}>{m}</button>
+        })}
       </div>
       <label className="toggle"><input type="checkbox" checked={ui.wire} onChange={(e) => setUI({ wire: e.target.checked })} /> Wireframe</label>
       <span className="spacer" />

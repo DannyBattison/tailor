@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { aiReady } from '../ai'
-import { aiGenerate, applySeed, makeVariants, newDesign, newDocFromScratch, pickVariant, regenSelectedSection, rerollCopy, rerollImages, rerollLayout, rerollPart, type Part } from '../actions'
+import { aiGenerate, applySeed, makeVariants, newDesign, newDocFromScratch, pickVariant, regenSelectedSection, rerollBackdrops, rerollCopy, rerollImages, rerollLayout, rerollPart, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
 import { getFont, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
@@ -22,7 +22,7 @@ export function Generate() {
   async function onImage(f?: File) {
     if (!f) return
     try {
-      const r = await paletteFromImage(f, doc.tokens.bgBold)
+      const r = await paletteFromImage(f, doc.tokens.bgBold, doc.tokens.mode)
       mutate((d) => ({ ...d, tokens: { ...d.tokens, palette: r.palette, spec: r.spec, hue: r.hue, paletteStrategy: 'image' } }))
       setUI({ locks: { ...ui.locks, palette: true } })
       toast('Palette taken from your image, contrast-corrected. Palette is now locked.')
@@ -40,6 +40,7 @@ export function Generate() {
     { label: 'Signature', hint: doc.tokens.signature, lock: 'signature', run: part('signature') },
     { label: 'Layout', hint: archetypesFor(doc.meta.kind).find((a) => a.id === doc.meta.archetype)?.name ?? '', lock: 'layout', run: rerollLayout },
     { label: 'Copy', hint: 'another business', lock: 'copy', run: rerollCopy },
+    { label: 'Backdrops', hint: 'hero and band backgrounds', run: rerollBackdrops },
     { label: 'Images', hint: 'new art', run: rerollImages },
     { label: 'Section', hint: inSection ? 'the selected one' : 'select something first', run: regenSelectedSection, disabled: !inSection },
   ]

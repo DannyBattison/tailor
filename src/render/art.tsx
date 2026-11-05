@@ -6,13 +6,14 @@ export type ArtKind = (typeof ART_KINDS)[number]
 const TONES = ['surface', 'accent2', 'accent', 'ink'] as const
 
 /** Generated SVG art drawn only in palette variables. Fills its box (slice). */
-export function Art({ kind, seed, tone = 0 }: { kind: ArtKind; seed: number; tone?: number }) {
+export function Art({ kind, seed, tone = 0, soft = false }: { kind: ArtKind; seed: number; tone?: number; soft?: boolean }) {
   const r = makeRng(seed * 7 + tone)
   const W = 400
   const H = 300
   // a disciplined palette: the ground plus at most three other tones, never the whole rainbow
   const ground = TONES[tone % 4]
-  const pal = r.shuffle(TONES.filter((t) => t !== ground && !(ground === 'accent' && t === 'accent2'))).slice(0, 3).map((t) => `var(--${t})`)
+  // soft art (backdrops) never uses ink, so it reads as colour, not grey smudges
+  const pal = r.shuffle(TONES.filter((t) => t !== ground && !(ground === 'accent' && t === 'accent2') && !(soft && t === 'ink'))).slice(0, 3).map((t) => `var(--${t})`)
   const bg = `var(--${ground})`
   const c = (i: number) => pal[i % pal.length]
   const shapes: JSX.Element[] = []

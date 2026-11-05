@@ -14,12 +14,13 @@ const Ctx = createContext<RenderCtx>({ editor: false })
 
 /** https://placehold.co URL in palette colours, sized from the node's ratio. */
 export function placeholdUrl(p: Props, t?: Tokens, w = 1200): string {
+  // hideText: draw the label in the background colour so only a flat stand-in remains
   const [rw, rh] = String(p.ratio ?? '4/3').split('/').map(Number)
   const h = Math.round((w * (rh || 3)) / (rw || 4))
   const pal = t?.palette
   const bgs = pal ? [pal.surface, pal.accent2, pal.accent, pal.ink] : ['#e5e5e5', '#d4d4d4', '#bdbdbd', '#333333']
   const bg = bgs[(p.tone ?? 0) % 4]
-  const fg = pal ? textOn(bg, 0) : '#222222'
+  const fg = p.hideText ? bg : pal ? textOn(bg, 0) : '#222222'
   const text = p.caption || `${rw || 4}:${rh || 3}`
   return `https://placehold.co/${w}x${h}/${bg.slice(1)}/${fg.slice(1)}?text=${encodeURIComponent(text).replace(/%20/g, '+')}`
 }
@@ -56,6 +57,15 @@ function useAttrs(n: DNode, cls: string, extra: Record<string, any> = {}, style:
 
 const ed = (ctx: RenderCtx, prop: string) => (ctx.editor ? { 'data-edit': prop } : {})
 
+/** Backdrop layer for art/photo backdrops; pattern backdrops are pure CSS on the element. */
+function BackdropLayer({ p, tokens }: { p: Props; tokens?: Tokens }) {
+  if (p.backdrop === 'art') return <div className="d-bd" aria-hidden="true"><Art soft kind={(p.bdArt ?? 'blocks') as ArtKind} seed={p.bdSeed ?? 1} tone={p.bdTone ?? 0} /></div>
+  if (p.backdrop === 'photo') return <div className="d-bd" data-kind="photo" aria-hidden="true"><img className="d-photo" src={placeholdUrl({ ratio: '16/9', tone: p.bdTone ?? 0, hideText: true }, tokens, 1600)} alt="" loading="lazy" draggable={false} /></div>
+  return null
+}
+const bdAttrs = (p: Props) => (p.backdrop ? { 'data-backdrop': p.backdrop, 'data-bdside': p.bdSide } : {})
+const bdStyle = (p: Props): Record<string, any> => (p.backdrop ? { '--bd-s': p.bdStrength === 'strong' ? 2 : 1 } : {})
+
 function Kids({ n }: { n: DNode }) {
   return <>{n.children.map((c) => <NodeView key={c.id} n={c} />)}</>
 }
@@ -71,16 +81,16 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
     case 'page':
       return <Kids n={n} />
     case 'section': {
-      const a = useAttrs(n, 'd-sec', { 'data-bg': p.bg, 'data-pad': p.pad === 'none' ? 'none' : undefined, 'data-align': p.align, 'data-width': p.width }, { '--pad': PAD[p.pad ?? 'm'], '--gap': p.gap, ...(p.sw ? { '--sw': `${p.sw}px` } : {}) } as CSSProperties)
-      return <section {...a}><div className="d-inner"><Kids n={n} /></div></section>
+      const a = useAttrs(n, 'd-sec', { 'data-bg': p.bg, 'data-pad': p.pad === 'none' ? 'none' : undefined, 'data-align': p.align, 'data-width': p.width, ...bdAttrs(p) }, { '--pad': PAD[p.pad ?? 'm'], '--gap': p.gap, ...bdStyle(p), ...(p.sw ? { '--sw': `${p.sw}px` } : {}) } as CSSProperties)
+      return <section {...a}><BackdropLayer p={p} tokens={ctx.tokens} /><div className="d-inner"><Kids n={n} /></div></section>
     }
     case 'box': {
       const dir = p.dir ?? 'col'
       const a = useAttrs(n, 'd-box', {
         'data-dir': dir, 'data-align': p.align, 'data-justify': p.justify, 'data-bg': p.bg, 'data-variant': p.variant,
-        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined,
-      }, { '--tpl': tpl(p.cols), '--gap': p.gap, '--bpad': p.pad, '--ai': p.valign } as CSSProperties)
-      return <div {...a}><Kids n={n} /></div>
+        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined, ...bdAttrs(p),
+      }, { '--tpl': tpl(p.cols), '--gap': p.gap, '--bpad': p.pad, '--ai': p.valign, ...bdStyle(p) } as CSSProperties)
+      return <div {...a}><BackdropLayer p={p} tokens={ctx.tokens} /><Kids n={n} /></div>
     }
     case 'heading': {
       const Tag = (`h${p.level ?? 2}`) as 'h1'

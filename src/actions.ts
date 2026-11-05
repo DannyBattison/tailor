@@ -1,13 +1,15 @@
 import { aiBrief, aiReady, aiRewrite, type LlmConfig } from './ai'
-import { archetypesFor } from './gen/build'
+import { archetypesFor, backdropProps, clearBackdrop } from './gen/build'
+import { makeRng } from './lib/rng'
 import { generate, generateGuarded, generateVariants, regenSection, withSignature } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { APPS, MARKETING } from './gen/content'
+import { paletteOf } from './gen/palette'
 import { genTokens } from './gen/tokens'
 import { ART_KINDS } from './render/art'
 import { walk, collectTexts, duplicateNode, find, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
-import type { Doc, Signature } from './types'
+import type { DNode, Doc, Signature } from './types'
 
 export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model, cliPath: ui.cliPaths[ui.provider] || undefined } }
 const needAi = () => { const { ui } = getState(); if (aiReady(llmConfig(), ui.cli)) return true; setUI({ menu: 'key' }); toast('Pick an AI provider first'); return false }
@@ -181,4 +183,21 @@ export async function aiRewriteSection(instruction: string) {
   } finally {
     setUI({ busy: '' })
   }
+}
+
+/** Light/dark for the design itself (not the editor chrome). Needs a generated palette to derive from. */
+export function setMode(mode: 'light' | 'dark') {
+  mutate((d) => (d.tokens.spec ? { ...d, tokens: { ...d.tokens, mode, palette: paletteOf(d.tokens.spec, d.tokens.bgBold, mode) } } : d), 'mode')
+}
+
+/** New backdrops for every hero, band and tile that was given one at generation time (including ones that got none). */
+export function rerollBackdrops() {
+  const rng = makeRng(rand())
+  mutate((d) => {
+    let root = d.root
+    const targets: DNode[] = []
+    walk(root, (n) => { if (n.props.bdGen) targets.push(n) })
+    for (const n of targets) root = updateProps(root, n.id, { ...clearBackdrop(), ...backdropProps(rng, n.props.bdRole, n.props.bg, !!n.props.bdFlat) })
+    return { ...d, root }
+  })
 }

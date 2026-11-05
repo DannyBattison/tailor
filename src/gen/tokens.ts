@@ -4,13 +4,13 @@ import { FONT_PAIRS } from './fonts'
 import { MOODS } from './moods'
 import { DEFAULT_BG_BOLD, genPalette } from './palette'
 
-export function genPaletteTokens(seed: number, mood: string, bgBold = DEFAULT_BG_BOLD) {
+export function genPaletteTokens(seed: number, mood: string, bgBold = DEFAULT_BG_BOLD, mode?: 'light' | 'dark') {
   const rng = stageRng(seed, 'palette')
   const m = MOODS[mood] ?? MOODS.editorial
   const strategy = rng.weighted(m.strategies)
   const range = rng.pick(m.hues)
-  const { palette, hue, spec } = genPalette(rng, { strategy, hueRange: range, bgBold })
-  return { palette, hue, spec, bgBold, paletteStrategy: strategy as string }
+  const { palette, hue, spec } = genPalette(rng, { strategy, hueRange: range, bgBold, mode })
+  return { palette, hue, spec, bgBold, mode, paletteStrategy: strategy as string }
 }
 
 export function genFontId(seed: number, mood: string): string {
@@ -49,7 +49,7 @@ export function fixSignature(t: Tokens): Tokens {
 /** Generate tokens; locked parts are copied from `prev`. Shape, rhythm and signature are locked independently. */
 export function genTokens(seed: number, mood: string, prev?: Tokens, locks?: Partial<Locks>): Tokens {
   const keep = (k: keyof Locks) => !!prev && !!locks?.[k]
-  const pal = keep('palette') ? { palette: prev!.palette, hue: prev!.hue, spec: prev!.spec, bgBold: prev!.bgBold, paletteStrategy: prev!.paletteStrategy } : genPaletteTokens(seed, mood, prev?.bgBold ?? DEFAULT_BG_BOLD)
+  const pal = keep('palette') ? { palette: prev!.palette, hue: prev!.hue, spec: prev!.spec, bgBold: prev!.bgBold, mode: prev!.mode, paletteStrategy: prev!.paletteStrategy } : genPaletteTokens(seed, mood, prev?.bgBold ?? DEFAULT_BG_BOLD, prev?.mode)
   const fontId = keep('fonts') ? prev!.fontId : genFontId(seed, mood)
   const g = genShape(seed, mood)
   const t: Tokens = {

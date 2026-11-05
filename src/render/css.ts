@@ -148,6 +148,27 @@ export const DOC_CSS = `
 .d-quote[data-size=xl] blockquote{font-size:var(--fs-1)}
 .d-quote cite{font:var(--fs-s) var(--f-mono);font-style:normal;color:var(--muted)}
 .d-quote[data-mark=true] blockquote::before{content:'\\201C';display:block;font-size:2em;line-height:.6;color:var(--accent-text)}
+/* backdrops: quiet texture and colour fields behind heroes and components (all palette-driven) */
+[data-backdrop]{position:relative;--bd-s:1}
+.d-sec[data-backdrop],.d-box[data-backdrop]{overflow:hidden}
+.d-sec[data-backdrop]>.d-inner{position:relative;z-index:1}
+.d-box[data-backdrop]>*:not(.d-bd){position:relative;z-index:1}
+[data-backdrop=grid]{background-image:linear-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px);background-size:44px 44px;background-position:-1px -1px}
+[data-backdrop=dots]{background-image:radial-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 16%),transparent) 1.4px,transparent 1.7px);background-size:20px 20px}
+[data-backdrop=hatch]{background-image:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 6%),transparent) 9px 10px)}
+[data-backdrop=wash]{background-image:radial-gradient(60% 90% at 88% 0%,color-mix(in oklab,var(--accent) calc(var(--bd-s) * 15%),transparent),transparent 70%),radial-gradient(45% 70% at 0% 100%,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 40%),transparent),transparent 70%)}
+[data-backdrop=split]{background-image:linear-gradient(to right,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
+[data-backdrop=split][data-bdside=right]{background-image:linear-gradient(to left,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
+[data-backdrop=noise]{background-image:${GRAIN};background-blend-mode:multiply}
+.d-bd{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:calc(var(--bd-s) * .14)}
+.d-bd .d-art,.d-bd img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.d-bd[data-kind=photo]{opacity:1}
+.d-bd[data-kind=photo]::after{content:'';position:absolute;inset:0;background:color-mix(in oklab,var(--scrim,var(--bg)) calc(100% - var(--bd-s) * 12%),transparent)}
+.d-sec[data-bg=inverse]{--scrim:var(--inverse)}
+.d-sec[data-bg=accent]{--scrim:var(--accent)}
+.d-sec[data-bg=surface]{--scrim:var(--surface)}
+.d-frame.wire [data-backdrop]{background-image:none !important}
+.d-frame.wire .d-bd{display:none}
 /* signatures */
 .d-doc[data-sig=hardShadow]{--shadow:6px 6px 0 var(--ink)}
 .d-doc[data-sig=oversized] .d-h[data-size=xl]{font-size:calc(var(--fs-1) * 1.22);line-height:.95}
