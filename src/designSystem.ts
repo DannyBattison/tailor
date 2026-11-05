@@ -4,6 +4,9 @@ import { fontsUrl, fontStacks, getFont } from './gen/fonts'
 import { contrast, hexToOklch } from './lib/color'
 import { placeholdColors, placeholdUrl } from './render/placehold'
 import { walk } from './lib/tree'
+import { makeRng } from './lib/rng'
+import { SECTIONS, type Ctx } from './gen/build'
+import { PLACEHOLDER_APP, PLACEHOLDER_MARKETING } from './gen/content'
 import type { DNode, Doc } from './types'
 
 const SIGNATURES: Record<string, string> = {
@@ -16,7 +19,7 @@ const SIGNATURES: Record<string, string> = {
   marquee: 'A full-bleed scrolling text band in accent colour sits under the hero.',
 }
 
-function outline(n: DNode, depth = 0): any {
+function outline(n: DNode, depth = 0, maxDepth = 3): any {
   const o: any = { type: n.type }
   if (n.props.build) o.build = n.props.build
   const label = n.props.text ?? n.props.label ?? n.props.brand
@@ -25,10 +28,69 @@ function outline(n: DNode, depth = 0): any {
   if (n.props.cols) o.columns = n.props.cols
   if (n.props.bg) o.fill = n.props.bg
   if (n.props.variant) o.variant = n.props.variant
-  if (n.children.length && depth < 3) o.children = n.children.map((c) => outline(c, depth + 1))
+  if (n.props.backdrop) o.backdrop = n.props.backdrop
+  if (n.props.span) o.span = n.props.span
+  if (n.children.length && depth < maxDepth) o.children = n.children.map((c) => outline(c, depth + 1, maxDepth))
   else if (n.children.length) o.children = `${n.children.length} nodes`
   return o
 }
+
+const PATTERN_NOTES: Record<string, string> = {
+  'nav.bar': 'Brand left, links centred or right, one primary button. Optional rule below.',
+  'nav.centered': 'Brand and links stacked and centred; no button.',
+  'hero.split': 'Two-column hero: eyebrow, headline, lead, two actions beside a tall image. Column ratio and order vary.',
+  'hero.giant': 'Poster hero: oversized headline across the full width, lead and action in an asymmetric row beneath.',
+  'hero.stack': 'Left-aligned headline and lead, actions on the right, then a wide banner image.',
+  'hero.dense': 'Compact editorial hero: headline left, ruled lead and action right. For index-style pages.',
+  'features.numbered': 'Sticky heading column beside a numbered, ruled list of features.',
+  'features.twocol': 'Heading over a two-column grid of ruled items.',
+  'features.uneven': 'Row of cards in deliberately unequal widths; at most one loud fill.',
+  'features.bento': 'Four-column bento grid of mixed tiles (feature, stat, image, quote) with varied spans.',
+  'features.alt': 'Alternating image/text rows.',
+  'stats.row': 'Four ruled stats in a row.',
+  'stats.big': 'Three stats on an accent or inverse band, one emphasised.',
+  'quote.big': 'Large pull quote on a filled band.',
+  'quote.side': 'Small label column beside a quote.',
+  'quote.pair': 'Two quotes: one ruled, one outlined.',
+  'cta.band': 'Filled band: closing line and button on one row.',
+  'cta.split': 'Oversized closing line over a two-column lead and actions.',
+  'index.list': 'Sticky heading beside a large ruled index list.',
+  'index.table': 'Heading beside a striped data table.',
+  'marquee.band': 'Full-bleed scrolling text band.',
+  'footer.simple': 'Heavy rule, brand and address, link list, small print.',
+  'app.topbar': 'View title, subtitle, search field and primary action.',
+  'app.kpis': 'Row of metric cards, first emphasised.',
+  'app.kpis2': 'Row of ruled metrics.',
+  'app.table': 'Card with a data table beside an "up next" list.',
+  'app.table2': 'Full-width striped table.',
+}
+
+/** Section patterns rendered with neutral placeholder copy so only structure and styling are described. */
+function patternLibrary(doc: Doc) {
+  const cont = { c: PLACEHOLDER_MARKETING, a: PLACEHOLDER_APP }
+  const wanted = Object.keys(SECTIONS).filter((k) => (doc.meta.kind === 'app' ? k.startsWith('app.') || k.startsWith('nav.') : !k.startsWith('app.')))
+  return wanted.map((key) => {
+    const x: Ctx = { rng: makeRng(doc.meta.layoutSeed + key.length * 131), t: doc.tokens, ...cont }
+    const tree = SECTIONS[key](x)
+    return { key, use: PATTERN_NOTES[key] ?? '', structure: outline(tree, 0, 4) }
+  })
+}
+
+const MARKETING_PAGES = [
+  { page: 'Home', sections: ['nav', 'hero.*', 'features.*', 'stats.*', 'quote.*', 'cta.*', 'footer.simple'] },
+  { page: 'About', sections: ['nav', 'hero.stack|hero.dense', 'features.alt|features.numbered', 'quote.side|quote.pair', 'stats.row', 'cta.band', 'footer.simple'] },
+  { page: 'Pricing', sections: ['nav', 'hero.dense', 'features.uneven (plans)', 'index.table (comparison)', 'quote.pair', 'cta.band', 'footer.simple'] },
+  { page: 'Services / Features', sections: ['nav', 'hero.stack', 'features.bento|features.twocol', 'features.alt', 'cta.split', 'footer.simple'] },
+  { page: 'Blog / Journal index', sections: ['nav', 'hero.dense', 'index.list (posts)', 'footer.simple'] },
+  { page: 'Article', sections: ['nav', 'hero.dense (title, date)', 'quote.side', 'cta.band', 'footer.simple'] },
+  { page: 'Contact', sections: ['nav', 'hero.dense', 'features.twocol (ways to reach us)', 'index.table (opening hours)', 'footer.simple'] },
+]
+const APP_PAGES = [
+  { page: 'Overview', sections: ['app.topbar', 'app.kpis|app.kpis2', 'app.table'] },
+  { page: 'List view', sections: ['app.topbar', 'app.table2'] },
+  { page: 'Detail', sections: ['app.topbar', 'app.kpis2', 'app.table'] },
+  { page: 'Settings', sections: ['settings archetype layout: sidebar nav + grouped form rows'] },
+]
 
 /** A self-contained description of the design, meant to be handed to another AI or developer. */
 export function designSystem(doc: Doc) {
@@ -90,6 +152,18 @@ export function designSystem(doc: Doc) {
       default: 'Generated SVG art drawn only with palette variables (blocks, stripes, arches, dots, waves, sun, rings). Never grey boxes.',
       placeholder: images ? { note: 'placehold.co stand-ins use palette colour pairs (never grey) and the theme serif/sans. URL shape: https://placehold.co/WxH/BG/FG?text=Label&font=playfair-display|source-sans-pro', pairs: [0, 1, 2, 3].map((n) => placeholdColors(t.palette, n)), example: placeholdUrl({ ...images.props, source: 'placehold' }, t) } : undefined,
     },
+    howToUse: 'This is a design system, not a page. The preview shows one sample page; build every page of the site from the patterns below, in this order of preference: reuse a pattern, vary its content, only then invent. Write real copy yourself: any text in the structures is placeholder.',
+    patterns: patternLibrary(doc),
+    pages: doc.meta.kind === 'app' ? APP_PAGES : MARKETING_PAGES,
+    components: {
+      button: { variants: ['solid (accent)', 'outline', 'ink', 'ghost (underlined link)'], sizes: ['s', 'm', 'l'], radius: `${t.radius}px`, border: `${Math.max(1.5, t.border)}px ink`, shadow: t.shadow },
+      tag: { variants: ['accent2 (default)', 'solid', 'plain', 'accent'], style: 'mono, uppercase, 0.08em tracking' },
+      card: { variants: ['card (border + shadow)', 'outline', 'rule-top', 'rule-left'], radius: `${Math.min(t.radius, 22)}px (large boxes never go fully round)` },
+      input: { variants: ['text', 'textarea', 'select', 'toggle'], style: 'mono uppercase label above a bordered control' },
+      list: { variants: ['ruled', 'index', 'numbered', 'bullets'] },
+      table: { options: ['zebra'], style: 'mono uppercase header with a heavy rule under it' },
+      backdrops: { options: ['none', 'grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo'], rule: 'Backdrops are quiet texture or colour fields behind heroes, bands and a single tile; never behind dense text.' },
+    },
     cssVariables: tokenVars(t),
     rules: [
       'Use only the colours above. Never introduce purple/blue gradients, pure grey (#808080-style) or pure black/white.',
@@ -105,6 +179,18 @@ export function designSystem(doc: Doc) {
   }
 }
 
+/** Prompt copy: same data, with the stylesheet minified so it fits comfortably in a chat. */
+const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
+
 export function designSystemPrompt(doc: Doc): string {
-  return `You are building UI for "${doc.meta.name}". Below is its design system as JSON. Follow it strictly: use the colour roles, fonts, type scale, radius, borders, shadows, spacing and signature move exactly as given, respect the "rules", and match the layout archetype ("${doc.meta.archetype}") when composing pages. If you generate HTML, reuse the cssVariables on the root element and the supplied base CSS (class names d-*) or reproduce its look in your own CSS. Do not add generic gradients, stock icons or filler copy.\n\n\`\`\`json\n${JSON.stringify(designSystem(doc), null, 2)}\n\`\`\`\n`
+  return `You are building a complete multi-page ${doc.meta.kind === 'app' ? 'app UI' : 'website'} for a project that already has a design system. Below is that system as JSON. It is a design system, not a page: any copy in it is placeholder, so write the real copy for the project yourself.
+
+How to work:
+1. Decide the pages the project needs (see "pages" for typical recipes) and build every one of them in the same system.
+2. Compose each page from the "patterns" library (section structures with column ratios, variants and fills). Reuse and vary patterns; don't invent new section layouts unless none fits. Keep the nav and footer identical across pages.
+3. Follow the tokens exactly: colour roles, fonts, fluid type scale, radius, borders, shadows, density and the signature move. Respect every item in "rules" and the "components" vocabulary.
+4. For HTML output, put the cssVariables on a root element and either use the supplied base CSS (class names d-*) or reproduce its look. Use the placeholder image URLs pattern for images until real ones exist.
+5. Do not add generic gradients, stock icons, emoji or filler copy.
+
+\`\`\`json\n${JSON.stringify(compact(designSystem(doc)), null, 1)}\n\`\`\`\n`
 }

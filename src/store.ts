@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react'
-import type { CliMap, Provider } from './ai'
 import { generateGuarded } from './gen/generate'
 import { loadSigs, pushSig, sigOf } from './gen/guard'
 import type { Doc, Kind, Locks } from './types'
@@ -13,43 +12,34 @@ export interface UI {
   rightTab: 'node' | 'design'
   kind: Kind
   mood: string
-  brief: string
   seed: number
   locks: Locks
   variants: Doc[] | null
-  apiKey: string
-  rememberKey: boolean
-  model: string
-  provider: Provider
-  cli: CliMap
-  cliPaths: Record<string, string>
   busy: string
   toast: string
-  menu: '' | 'export' | 'key'
+  menu: '' | 'export'
 }
 export interface State { doc: Doc; past: Doc[]; future: Doc[]; ui: UI }
 
 const LS_DOC = 'hm.doc'
 const LS_UI = 'hm.ui'
-const LS_KEY = 'hm.key'
 
 const defaultUI = (): UI => ({
-  selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '', brief: '',
+  selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '',
   seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false },
-  variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', provider: 'api', cli: {}, cliPaths: {}, busy: '', toast: '', menu: '',
+  variants: null, busy: '', toast: '', menu: '',
 })
 
 function load(): State {
   const ui = defaultUI()
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
-    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', cli: {} })
-    const k = localStorage.getItem(LS_KEY)
-    if (k) { ui.apiKey = k; ui.rememberKey = true }
+    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '' })
+    localStorage.removeItem('hm.key') // earlier builds could store an API key here; there is no AI integration any more
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
     if (d?.root && d.tokens) return { doc: d, past: [], future: [], ui }
   } catch { /* fall through */ }
-  const doc = generateGuarded({ seed: ui.seed, kind: ui.kind, mood: ui.mood, brief: ui.brief }, loadSigs())
+  const doc = generateGuarded({ seed: ui.seed, kind: ui.kind, mood: ui.mood }, loadSigs())
   ui.seed = doc.meta.seed
   pushSig(sigOf(doc))
   return { doc, past: [], future: [], ui }
@@ -64,10 +54,8 @@ function persist() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(LS_DOC, JSON.stringify(state.doc))
-      const { variants: _v, busy: _b, toast: _t, apiKey: _k, selectedId: _s, menu: _m, cli: _c, ...rest } = state.ui
+      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, ...rest } = state.ui
       localStorage.setItem(LS_UI, JSON.stringify(rest))
-      if (state.ui.rememberKey && state.ui.apiKey) localStorage.setItem(LS_KEY, state.ui.apiKey)
-      else localStorage.removeItem(LS_KEY)
     } catch { /* quota */ }
   }, 250)
 }

@@ -98,3 +98,11 @@ em{font-style:normal;color:var(--c-mute);font-weight:400}
 .mini{padding:2px 7px;font-size:11.5px;flex:none}
 .seedrow{align-items:center}.seedrow input{flex:1}.seedrow button{flex:none}
 .seedlabel{flex:none;font:600 10.5px 'IBM Plex Mono',monospace;text-transform:uppercase}
+
+details.content{border:1px solid var(--c-line);background:#fff;padding:0;margin-top:6px}
+details.content>summary{cursor:pointer;padding:6px 8px;font:600 10.5px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--c-mute)}
+details.content>summary small{font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px}
+details.content[open]{padding-bottom:8px}
+details.content[open]>summary{color:var(--c-ink)}
+details.content>*:not(summary){margin-left:8px;margin-right:8px}
+details.content>*:not(summary):not(:first-of-type){margin-top:6px}

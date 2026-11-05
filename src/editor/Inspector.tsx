@@ -1,6 +1,4 @@
-import { useState } from 'react'
-import { aiReady } from '../ai'
-import { aiRewriteSection, deleteSelected, duplicateSelected, nudgeSelected, setProps } from '../actions'
+import { deleteSelected, duplicateSelected, nudgeSelected, setProps } from '../actions'
 import { find, findParent, nearestSection } from '../lib/tree'
 import { setUI, useStore } from '../store'
 import type { DNode } from '../types'
@@ -36,7 +34,6 @@ function FieldInput({ f, node }: { f: Field; node: DNode }) {
 
 export function Inspector() {
   const { doc, ui } = useStore()
-  const [instr, setInstr] = useState('')
   const node = ui.selectedId ? find(doc.root, ui.selectedId) : null
   if (!node) return <div className="panel-body"><p className="hint">Click anything on the canvas to inspect it. Double-click text to edit it in place.</p></div>
   const loc = findParent(doc.root, node.id)
@@ -69,16 +66,7 @@ export function Inspector() {
           <FieldInput f={f} node={node} />
         </div>
       ))}
-      {sec && (
-        <div className="scoped">
-          <label className="lbl">Section: {String(sec.props.build ?? 'custom')} <span className="hint">· re-roll it from the Generate tab</span></label>
-          <div className="row2">
-            <input placeholder="make it more… (e.g. blunt, warmer)" value={instr} onChange={(e) => setInstr(e.target.value)} />
-            <button disabled={!aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) || !!ui.busy} onClick={() => aiRewriteSection(instr ? `Make it more ${instr}.` : 'Rewrite the copy so it is more specific and less generic.')}>Rewrite</button>
-          </div>
-          {!aiReady({ provider: ui.provider, key: ui.apiKey, model: ui.model }, ui.cli) && <p className="hint">Rewriting copy needs an AI provider (top bar). Everything else works without.</p>}
-        </div>
-      )}
+      {sec && <p className="hint scoped">Section: {String(sec.props.build ?? 'custom')}. Re-roll it from the Generate tab.</p>}
     </div>
   )
 }

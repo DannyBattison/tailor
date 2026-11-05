@@ -121,16 +121,3 @@ export function nearestSection(root: DNode, id: string): DNode | null {
   for (let i = p.length - 1; i >= 0; i--) if (p[i].type === 'section') return p[i]
   return null
 }
-
-/** Text-bearing props in a subtree, used for AI rewriting. */
-export const TEXT_PROPS: Partial<Record<NodeType, string[]>> = {
-  heading: ['text'], text: ['text'], button: ['label'], tag: ['text'], quote: ['text', 'who'],
-  stat: ['value', 'label'], nav: ['brand', 'cta'], input: ['label'], image: ['caption'],
-}
-export function collectTexts(n: DNode): { id: string; prop: string; text: string }[] {
-  const out: { id: string; prop: string; text: string }[] = []
-  walk(n, (x) => {
-    for (const p of TEXT_PROPS[x.type] ?? []) if (typeof x.props[p] === 'string' && x.props[p]) out.push({ id: x.id, prop: p, text: x.props[p] })
-  })
-  return out
-}

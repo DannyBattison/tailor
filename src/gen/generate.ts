@@ -2,53 +2,31 @@ import { makeRng, stageRng } from '../lib/rng'
 import { find, mk, walk } from '../lib/tree'
 import type { DNode, Doc, Kind, Locks, Meta, Signature } from '../types'
 import { ALL_ARCHETYPES, SECTIONS, archetypesFor, roleOf, variantsOf, type Ctx } from './build'
-import { APPS, MARKETING, type AppContent, type MarketingContent } from './content'
+import { loremApp, loremMarketing } from './lorem'
 import { sigOf, tooClose, type Sig } from './guard'
-import { MOOD_NAMES, inferFromText } from './moods'
+import { MOOD_NAMES } from './moods'
 import { fixSignature, genTokens } from './tokens'
 
 export interface GenOpts {
   seed: number
   kind: Kind
-  mood: string // '' = infer from brief / seed
-  brief: string
+  mood: string // '' = pick from the seed
   archetype?: string
   layoutSeed?: number
   contentSeed?: number
   locks?: Partial<Locks>
   prev?: Doc
-  override?: Record<string, any>
-  siteKind?: string
 }
 
-function mergeArr<T>(base: T[], over: any): T[] {
-  if (!Array.isArray(over)) return base
-  return base.map((b, i) => (over[i] && typeof over[i] === 'object' && typeof b === 'object' ? { ...b, ...over[i] } : over[i] ?? b)) as T[]
-}
-function mergeContent<T extends object>(base: T, over?: Record<string, any>): T {
-  if (!over) return base
-  const out: any = { ...base }
-  for (const [k, v] of Object.entries(over)) {
-    if (v == null || v === '') continue
-    out[k] = Array.isArray(v) ? mergeArr((base as any)[k] ?? [], v) : v
-  }
-  return out
-}
-
-export function contentFor(kind: Kind, siteKind: string, seed: number, override?: Record<string, any>) {
-  const rng = stageRng(seed, 'content')
-  const mc: MarketingContent = MARKETING.find((m) => m.id === siteKind) ?? rng.pick(MARKETING)
-  const ac: AppContent = APPS.find((m) => m.id === siteKind) ?? rng.pick(APPS)
-  return { c: mergeContent(mc, kind === 'marketing' ? override : undefined), a: mergeContent(ac, kind === 'app' ? override : undefined), siteKind: kind === 'marketing' ? mc.id : ac.id }
+export function contentFor(seed: number) {
+  return { c: loremMarketing(seed), a: loremApp(seed) }
 }
 
 export function generate(o: GenOpts): Doc {
   const locks = o.locks ?? {}
   const prev = o.prev
   const same = prev && prev.meta.kind === o.kind ? prev : undefined // layout and copy only carry over within a kind
-  const inf = inferFromText(o.brief, o.kind)
-  const mood = o.mood || inf.mood || makeRng(o.seed).pick(MOOD_NAMES)
-  const siteKind = o.siteKind || (inf.kind === o.kind ? inf.siteKind : '') || (locks.copy && same ? same.meta.siteKind : '')
+  const mood = o.mood || makeRng(o.seed).pick(MOOD_NAMES)
   const tokens = genTokens(o.seed, mood, prev?.tokens, locks)
   if (o.kind === 'app' && tokens.signature === 'marquee') tokens.signature = 'hardShadow' // marquee copy is marketing-only
   const layoutSeed = o.layoutSeed ?? (locks.layout && same ? same.meta.layoutSeed : o.seed)
@@ -56,11 +34,10 @@ export function generate(o: GenOpts): Doc {
   const archetype = o.archetype ?? (locks.layout && same && pool.some((a) => a.id === same.meta.archetype) ? same.meta.archetype : stageRng(o.seed, 'archetype').pick(pool).id)
   const arch = ALL_ARCHETYPES.find((a) => a.id === archetype) ?? pool[0]
   const contentSeed = o.contentSeed ?? (locks.copy && same ? same.meta.contentSeed ?? same.meta.layoutSeed : o.seed)
-  const override = o.override ?? (locks.copy ? same?.meta.override : undefined)
-  const cont = contentFor(o.kind, siteKind, contentSeed, override)
+  const cont = contentFor(contentSeed)
   const x: Ctx = { rng: stageRng(layoutSeed, 'layout:' + arch.id), t: tokens, c: cont.c, a: cont.a }
   const children = postProcess(arch.build(x), x)
-  const meta: Meta = { seed: o.seed, kind: o.kind, mood, archetype: arch.id, layoutSeed, contentSeed, siteKind: cont.siteKind, brief: o.brief, name: o.kind === 'app' ? cont.a.name : cont.c.name, override }
+  const meta: Meta = { seed: o.seed, kind: o.kind, mood, archetype: arch.id, layoutSeed, contentSeed, name: o.kind === 'app' ? cont.a.name : cont.c.name }
   return { root: mk('page', {}, children), tokens, meta }
 }
 
@@ -120,7 +97,7 @@ export function regenSection(doc: Doc, sectionId: string, seed: number): DNode |
   const alts = variantsOf(roleOf(build))
   const rng = makeRng(seed)
   const pickKey = alts.length > 1 ? rng.pick(alts.filter((k) => k !== build)) : build
-  const cont = contentFor(doc.meta.kind, doc.meta.siteKind, doc.meta.contentSeed ?? doc.meta.layoutSeed, doc.meta.override)
+  const cont = contentFor(doc.meta.contentSeed ?? doc.meta.layoutSeed)
   const x: Ctx = { rng, t: doc.tokens, c: cont.c, a: cont.a }
   const next = SECTIONS[pickKey](x)
   if (old.props.bg === 'inverse' && next.type === 'section') next.props.bg = 'inverse'
@@ -137,7 +114,7 @@ export function withSignature(doc: Doc, sig: Signature): Doc {
     return { ...n, props, children: n.children.filter((c) => !c.props.sigBand).map(strip) }
   }
   const clean = strip(doc.root)
-  const cont = contentFor(doc.meta.kind, doc.meta.siteKind, doc.meta.contentSeed ?? doc.meta.layoutSeed, doc.meta.override)
+  const cont = contentFor(doc.meta.contentSeed ?? doc.meta.layoutSeed)
   const x: Ctx = { rng: stageRng(doc.meta.layoutSeed, 'sig:' + sig), t: tokens, c: cont.c, a: cont.a }
   return { ...doc, tokens, root: { ...clean, children: postProcess(clean.children, x) } }
 }

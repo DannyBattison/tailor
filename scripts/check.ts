@@ -13,8 +13,8 @@ const archs = new Set<string>(); const fonts = new Set<string>(); const hues = n
 let bannedHue = 0, contrastFails = 0
 for (const kind of ['marketing', 'app'] as const) {
   for (let s = 1; s <= 40; s++) {
-    const d = generate({ seed: s * 31, kind, mood: '', brief: '' })
-    const again = generate({ seed: s * 31, kind, mood: '', brief: '' })
+    const d = generate({ seed: s * 31, kind, mood: '' })
+    const again = generate({ seed: s * 31, kind, mood: '' })
     ok(JSON.stringify(d.tokens) === JSON.stringify(again.tokens), 'tokens deterministic ' + s)
     ok(JSON.stringify(strip(d.root)) === JSON.stringify(strip(again.root)), 'tree deterministic ' + s)
     const html = renderToStaticMarkup(createElement(DocView, { root: d.root, tokens: d.tokens }))
@@ -37,7 +37,7 @@ import { designSystem } from '../src/designSystem'
 import { placeholdColors, placeholdUrl } from '../src/render/placehold'
 import { contrast as ctr } from '../src/lib/color'
 {
-  const d = generate({ seed: 7, kind: 'marketing', mood: '', brief: '' })
+  const d = generate({ seed: 7, kind: 'marketing', mood: '' })
   const ds = designSystem(d)
   const bad = !ds.colors.bg.hex || !ds.typography.googleFonts.includes('fonts.googleapis.com') || !ds.rules.length || !ds.layout.outline.length
   if (bad) { console.log('FAIL design system incomplete'); process.exit(1) }
@@ -45,7 +45,7 @@ import { contrast as ctr } from '../src/lib/color'
   if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there&font=(playfair-display|source-sans-pro)$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
   // every placeholder pair is coloured (not grey) and readable
   for (let sd = 1; sd <= 60; sd++) {
-    const dd = generate({ seed: sd * 19, kind: 'marketing', mood: '', brief: '' })
+    const dd = generate({ seed: sd * 19, kind: 'marketing', mood: '' })
     for (const tn of [0, 1, 2, 3]) {
       const { bg, fg } = placeholdColors(dd.tokens.palette, tn)
       if (ctr(fg, bg) < 4.4) { console.log('FAIL placehold contrast', sd, tn, bg, fg); process.exit(1) }
@@ -58,16 +58,16 @@ import { contrast as ctr } from '../src/lib/color'
 import { withSignature } from '../src/gen/generate'
 import { genTokens } from '../src/gen/tokens'
 {
-  const d = generate({ seed: 11, kind: 'marketing', mood: '', brief: '' })
+  const d = generate({ seed: 11, kind: 'marketing', mood: '' })
   const locked = { palette: true, fonts: true, shape: true, signature: true }
   const t = genTokens(999, d.meta.mood, d.tokens, { ...locked, fonts: false })
   const ok2 = JSON.stringify({ ...t, fontId: 0 }) === JSON.stringify({ ...d.tokens, fontId: 0 })
-  const lay = generate({ seed: d.meta.seed, kind: 'marketing', mood: d.meta.mood, brief: '', archetype: 'index', layoutSeed: 5, siteKind: d.meta.siteKind, prev: d, locks: { ...locked, layout: false, copy: true } })
+  const lay = generate({ seed: d.meta.seed, kind: 'marketing', mood: d.meta.mood, archetype: 'index', layoutSeed: 5, prev: d, locks: { ...locked, layout: false, copy: true } })
   const sameTok = JSON.stringify(lay.tokens) === JSON.stringify(d.tokens)
   const withBand = withSignature(d, 'marquee')
   const hasBand = JSON.stringify(withBand.root).includes('"sigBand":true') || JSON.stringify(d.root).includes('"marquee"')
   const gone = !JSON.stringify(withSignature(withBand, 'grain').root).includes('sigBand')
-  const bad = !ok2 || !sameTok || lay.meta.seed !== d.meta.seed || lay.meta.siteKind !== d.meta.siteKind || !hasBand || !gone
+  const bad = !ok2 || !sameTok || lay.meta.seed !== d.meta.seed || !hasBand || !gone
   if (bad) { console.log('FAIL reroll semantics', { ok2, sameTok, hasBand, gone }); process.exit(1) }
   console.log('re-roll semantics ok')
 }
@@ -78,7 +78,7 @@ import { hexToOklch } from '../src/lib/color'
 {
   let fails = 0
   for (let s = 1; s <= 60; s++) {
-    const d = generate({ seed: s * 17, kind: 'marketing', mood: '', brief: '' })
+    const d = generate({ seed: s * 17, kind: 'marketing', mood: '' })
     if (!d.tokens.spec) { console.log('FAIL spec missing'); process.exit(1) }
     const quiet = buildPalette(applyBgBold(d.tokens.spec, 0))
     const bold = buildPalette(applyBgBold(d.tokens.spec, 1))
@@ -96,7 +96,7 @@ import { luminance } from '../src/lib/color'
 {
   let fails = 0
   for (let s = 1; s <= 80; s++) {
-    const d = generate({ seed: s * 13, kind: 'marketing', mood: '', brief: '' })
+    const d = generate({ seed: s * 13, kind: 'marketing', mood: '' })
     for (const mode of ['light', 'dark'] as const) {
       const p = paletteOf(d.tokens.spec!, 0.2, mode)
       if (issues2(p).length) fails++
@@ -105,4 +105,19 @@ import { luminance } from '../src/lib/color'
   }
   if (fails) { console.log('FAIL light/dark', fails); process.exit(1) }
   console.log('light/dark ok')
+}
+
+// export-for-AI: pattern library is structure-only (no sample copy) and the prompt stays chat-sized
+import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
+{
+  for (const kind of ['marketing', 'app'] as const) {
+    const d = generate({ seed: 21, kind, mood: '' })
+    const ds = dsx(d)
+    const blob = JSON.stringify(ds.patterns)
+    const real = kind === 'marketing' ? d.meta.name : d.meta.name
+    if (!ds.patterns.length || !ds.pages.length || blob.includes(real)) { console.log('FAIL export patterns', kind); process.exit(1) }
+    const kb = designSystemPrompt(d).length / 1024
+    if (kb > 60) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
+  }
+  console.log('export for AI ok')
 }

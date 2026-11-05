@@ -87,14 +87,14 @@ export const SECTIONS: Record<string, Builder> = {
     const n = x.rng.int(4, 6)
     return sec('features.numbered', { pad: 'l' }, [
       row(x.rng.pick(['1fr 2fr', '2fr 3fr', '1fr 3fr']), [
-        col([H(x.rng.pick(['How it works', 'What you get', 'The details', 'Why us']), 'm'), P(x.c.sub, { muted: true, size: 's' })], { sticky: true, gap: 0.8 }),
+        col([H(x.c.heads[0], 'm'), P(x.c.sub, { muted: true, size: 's' })], { sticky: true, gap: 0.8 }),
         col(x.c.features.slice(0, n).map((f) => row('auto 1fr', [T(String(x.c.features.indexOf(f) + 1).padStart(2, '0'), { variant: 'plain' }), col([H(f.title, 's', 3), P(f.body, { muted: true })], { gap: 0.3 })], { variant: 'rule-top', gap: 1, keep: true })), { gap: 1 }),
       ], { gap: 3 }),
     ])
   },
   'features.twocol': (x) =>
     sec('features.twocol', { pad: 'l' }, [
-      H(x.rng.pick(['The detail work', 'What we care about', 'Things worth knowing']), 'l'),
+      H(x.c.heads[1], 'l'),
       mk('box', { dir: 'grid', cols: 2, gap: 1.8 }, x.c.features.slice(0, x.rng.pick([4, 6])).map((f) => col([H(f.title, 's', 3), P(f.body, { muted: true })], { variant: 'rule-top', gap: 0.4 }))),
     ]),
   'features.uneven': (x) => {
@@ -102,7 +102,7 @@ export const SECTIONS: Record<string, Builder> = {
     // one loud card at most; the others stay quiet so the row isn't a rainbow
     const bgs = x.rng.pick<(string | undefined)[]>([['inverse', 'surface', 'surface'], ['accent', 'surface', undefined], ['surface', 'inverse', undefined], [undefined, 'accent', undefined]])
     return sec('features.uneven', { pad: 'l' }, [
-      row(x.rng.chance(0.5) ? '1fr 2fr' : '2fr 1fr', [H(x.rng.pick(['Three things we won\'t compromise on', 'What this is about', 'The short version']), 'l'), P(x.c.sub, { muted: true })], { gap: 2, valign: 'end' }),
+      row(x.rng.chance(0.5) ? '1fr 2fr' : '2fr 1fr', [H(x.c.heads[2], 'l'), P(x.c.sub, { muted: true })], { gap: 2, valign: 'end' }),
       row(pattern[0], x.c.features.slice(0, pattern[1]).map((f, i) => col([H(f.title, 's', 3), P(f.body, { muted: i !== 0 && bgs[i] === undefined })], { variant: 'card', bg: bgs[i], pad: 1.2, gap: 0.6, ...(i === 0 ? { minh: 150 } : {}) })), { gap: 1.2, valign: 'stretch' }),
     ])
   },
@@ -119,7 +119,7 @@ export const SECTIONS: Record<string, Builder> = {
       img(x, '16/9', { span: spans2[0], shape: x.rng.pick([undefined, 'pill']) }),
       col([mk('quote', { text: q.text, who: q.who, size: 's' })], { variant: 'card', pad: 1.2, span: spans2[1], bg: 'inverse', justify: 'center' }),
     ]
-    return sec('features.bento', { pad: 'l' }, [row(x.rng.pick(['2fr 1fr', '1fr 1fr']), [H(x.rng.pick(['Everything in one place, sort of', 'A closer look', 'On the shelf']), 'l'), P(f[1].body, { muted: true })], { gap: 2, valign: 'end' }), mk('box', { dir: 'grid', cols: 4, gap: 1 }, tiles)])
+    return sec('features.bento', { pad: 'l' }, [row(x.rng.pick(['2fr 1fr', '1fr 1fr']), [H(x.c.heads[3], 'l'), P(f[1].body, { muted: true })], { gap: 2, valign: 'end' }), mk('box', { dir: 'grid', cols: 4, gap: 1 }, tiles)])
   },
   'features.alt': (x) => {
     const rows = x.c.features.slice(0, 3).map((f, i) => {
@@ -146,7 +146,7 @@ export const SECTIONS: Record<string, Builder> = {
   },
   'quote.side': (x) => {
     const q = x.rng.pick(x.c.quotes)
-    return sec('quote.side', { pad: 'l' }, [row(x.rng.pick(['1fr 3fr', '1fr 2fr']), [col([T('In their words', { variant: 'plain' }), mk('divider', { variant: 'heavy' })], { gap: 0.6 }), mk('quote', { text: q.text, who: q.who, mark: true })], { gap: 2.5 })])
+    return sec('quote.side', { pad: 'l' }, [row(x.rng.pick(['1fr 3fr', '1fr 2fr']), [col([T(x.c.heads[4], { variant: 'plain' }), mk('divider', { variant: 'heavy' })], { gap: 0.6 }), mk('quote', { text: q.text, who: q.who, mark: true })], { gap: 2.5 })])
   },
   'quote.pair': (x) =>
     sec('quote.pair', { pad: 'l' }, [row(x.rng.pick(['3fr 2fr', '2fr 3fr']), x.c.quotes.slice(0, 2).map((q, i) => col([mk('quote', { text: q.text, who: q.who, size: i ? 's' : undefined })], { variant: i ? 'outline' : 'rule-left', pad: i ? 1.2 : undefined })), { gap: 2, valign: 'start' })]),
@@ -159,15 +159,15 @@ export const SECTIONS: Record<string, Builder> = {
     sec('cta.split', { pad: 'xl' }, [H(x.c.closing, 'xl'), row('1fr 1fr', [P(x.c.closingSub, { size: 'l', muted: true }), btnRow([B(x.c.cta, 'solid', { arrow: true }), B(x.c.ctaAlt, 'outline')])], { gap: 2, valign: 'center' })]),
 
   'index.list': (x) =>
-    sec('index.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.rng.pick(['The full list', 'Currently on', 'Index']), 'm'), P('Updated weekly.', { muted: true, size: 's' })], { gap: 0.6, sticky: true }), mk('list', { variant: 'index', items: x.c.index })], { gap: 3 })]),
+    sec('index.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.c.heads[5], 'm'), P(x.c.note, { muted: true, size: 's' })], { gap: 0.6, sticky: true }), mk('list', { variant: 'index', items: x.c.index })], { gap: 3 })]),
   'index.table': (x) =>
-    sec('index.table', { pad: 'm' }, [row('1fr 2fr', [H(x.rng.pick(['At a glance', 'In numbers', 'Schedule']), 'm'), mk('table', { cols: x.c.tableCols, rows: x.c.tableRows, zebra: x.rng.chance(0.5) })], { gap: 2 })]),
+    sec('index.table', { pad: 'm' }, [row('1fr 2fr', [H(x.c.heads[2], 'm'), mk('table', { cols: x.c.tableCols, rows: x.c.tableRows, zebra: x.rng.chance(0.5) })], { gap: 2 })]),
   'marquee.band': (x) => sec('marquee.band', { pad: 'none', width: 'full' }, [mk('marquee', { items: x.c.marquee, bg: x.rng.pick([undefined, 'ink', 'accent2']) })]),
 
   'footer.simple': (x) =>
     sec('footer.simple', { pad: 's', bg: x.rng.pick([undefined, 'surface']) }, [
       mk('divider', { variant: 'heavy' }),
-      row(x.rng.pick(['2fr 1fr 1fr', '1fr 1fr 2fr', '3fr 2fr']), [col([H(x.c.name, 's', 3), P(x.c.footer, { muted: true, size: 's' })], { gap: 0.4 }), mk('list', { variant: 'bullets', items: x.c.nav }), P('Made by hand, in a few weeks.\nNo cookies.'.replace('\n', ' '), { muted: true, size: 's' })], { gap: 2 }),
+      row(x.rng.pick(['2fr 1fr 1fr', '1fr 1fr 2fr', '3fr 2fr']), [col([H(x.c.name, 's', 3), P(x.c.footer, { muted: true, size: 's' })], { gap: 0.4 }), mk('list', { variant: 'bullets', items: x.c.nav }), P(x.c.note, { muted: true, size: 's' })], { gap: 2 }),
     ]),
 }
 
@@ -207,19 +207,19 @@ export const ARCHETYPES: Archetype[] = [
 const sidebar = (x: Ctx) =>
   col([
     mk('nav', { brand: x.a.name, links: x.a.nav, variant: 'stacked' }),
-    col([mk('divider', { variant: 'thin' }), P(x.a.user, { size: 's' }), P('Workspace settings', { size: 's', muted: true })], { gap: 0.4 }),
+    col([mk('divider', { variant: 'thin' }), P(x.a.user, { size: 's' }), P(x.a.heads[0], { size: 's', muted: true })], { gap: 0.4 }),
   ], { justify: 'between', gap: 2, pad: 1, bg: x.rng.pick(['surface', 'inverse', undefined]), variant: x.rng.pick(['rule-left', undefined]), full: true })
 
 const APP: Record<string, Builder> = {
-  'app.topbar': (x) => sec('app.topbar', { pad: 's' }, [row('1fr auto', [col([H(x.a.title, 'l', 1), P(x.a.sub, { muted: true })], { gap: 0.3 }), btnRow([mk('input', { label: 'Search', kind: 'text', placeholder: 'Find anything' }), B(x.a.primary, 'solid')])], { gap: 1.5, valign: 'end', keep: true })]),
+  'app.topbar': (x) => sec('app.topbar', { pad: 's' }, [row('1fr auto', [col([H(x.a.title, 'l', 1), P(x.a.sub, { muted: true })], { gap: 0.3 }), btnRow([mk('input', { label: x.a.heads[0], kind: 'text', placeholder: x.a.heads[1] }), B(x.a.primary, 'solid')])], { gap: 1.5, valign: 'end', keep: true })]),
   'app.kpis': (x) => {
     const lead = x.rng.chance(0.5)
     return sec('app.kpis', { pad: 's' }, [row(lead ? '2fr 1fr 1fr 1fr' : 4, x.a.kpis.map((k, i) => col([mk('stat', { value: k.value, label: k.label, size: lead && i === 0 ? 'l' : 'm' })], { variant: 'card', pad: 1, bg: lead && i === 0 ? 'accent' : x.rng.pick([undefined, 'surface']) })), { gap: 0.8 })])
   },
   'app.kpis2': (x) => sec('app.kpis2', { pad: 's' }, [row(4, x.a.kpis.map((k) => col([mk('stat', { value: k.value, label: k.label, size: 's' })], { variant: 'rule-top', pad: 0 })), { gap: 1.2 })]),
   'app.table': (x) => {
-    const main = col([row('1fr auto', [H('Recent', 's', 3), T(x.a.tableRows.length + ' items', { variant: 'plain' })], { keep: true }), mk('table', { cols: x.a.tableCols, rows: x.a.tableRows, zebra: x.rng.chance(0.5) })], { variant: 'card', pad: 1, gap: 0.6 })
-    const side = col([H('Up next', 's', 3), mk('list', { variant: x.rng.pick(['ruled', 'numbered']), items: x.a.side })], { gap: 0.6, variant: x.rng.pick(['outline', 'rule-left']), pad: 1 })
+    const main = col([row('1fr auto', [H(x.a.heads[2], 's', 3), T(x.a.tableRows.length + ' items', { variant: 'plain' })], { keep: true }), mk('table', { cols: x.a.tableCols, rows: x.a.tableRows, zebra: x.rng.chance(0.5) })], { variant: 'card', pad: 1, gap: 0.6 })
+    const side = col([H(x.a.heads[3], 's', 3), mk('list', { variant: x.rng.pick(['ruled', 'numbered']), items: x.a.side })], { gap: 0.6, variant: x.rng.pick(['outline', 'rule-left']), pad: 1 })
     const [a, b] = flip(x, main, side)
     return sec('app.table', { pad: 's' }, [row(a === main ? x.rng.pick(['2fr 1fr', '3fr 1fr', '5fr 2fr']) : x.rng.pick(['1fr 2fr', '2fr 5fr']), [a, b], { gap: 1, valign: 'start' })])
   },
@@ -241,7 +241,7 @@ export const APP_ARCHETYPES: Archetype[] = [
       const t = x.a.threads
       const list = col([row('1fr auto', [H(x.a.title, 's', 1), T(String(t.length))], { keep: true }), ...t.map((m, i) => col([row('1fr auto', [P(m.from, { size: 's' }), P(m.time, { size: 's', muted: true })], { keep: true, gap: 0.5 }), H(m.subject, 's', 3, { size: 's' }), P(m.preview, { size: 's', muted: true })], { gap: 0.2, pad: 0.8, bg: i === 0 ? 'surface' : undefined, variant: i === 0 ? 'rule-left' : 'rule-top' }))], { gap: 0.2, pad: 0.8 })
       const m = t[0]
-      const read = col([T(m.from, { variant: 'accent' }), H(m.subject, 'm', 2), P(m.time + ' · to me', { muted: true, size: 's' }), mk('divider', {}), P(m.preview + ' ' + m.preview, { size: 'l' }), btnRow([B('Reply', 'solid'), B('Snooze', 'outline'), B('Archive', 'ghost')]), mk('input', { label: 'Reply', kind: 'textarea', placeholder: 'Write a short answer…' })], { gap: 1, pad: 1.4 })
+      const read = col([T(m.from, { variant: 'accent' }), H(m.subject, 'm', 2), P(m.time, { muted: true, size: 's' }), mk('divider', {}), P(m.preview + ' ' + m.preview, { size: 'l' }), btnRow([B(x.a.heads[3], 'solid'), B(x.a.heads[4], 'outline'), B(x.a.heads[5], 'ghost')]), mk('input', { label: x.a.heads[3], kind: 'textarea', placeholder: x.a.note })], { gap: 1, pad: 1.4 })
       return [row(x.rng.pick(['200px 320px 1fr', '180px 380px 1fr', '220px 300px 1fr']), [sidebar(x), list, read], { keep: true, gap: 0, valign: 'stretch' })]
     },
   },
@@ -250,15 +250,15 @@ export const APP_ARCHETYPES: Archetype[] = [
     build: (x) => {
       const cols = x.a.columns.slice(0, x.rng.pick([3, 4]))
       const board = row(x.rng.chance(0.5) ? cols.length : cols.map((_, i) => (i === 1 ? '1.4fr' : '1fr')).join(' '), cols.map((c) => col([row('1fr auto', [H(c.title, 's', 3), T(String(c.cards.length), { variant: 'solid' })], { keep: true, valign: 'center' }), ...c.cards.map((k) => card(x, k.title, k.tag, k.meta))], { gap: 0.7, pad: 0.8, bg: 'surface', variant: x.rng.pick(['outline', undefined]) })), { gap: 0.8 })
-      return [mk('nav', { brand: x.a.name, links: x.a.nav, cta: x.a.primary, variant: 'bar', border: true, build: 'nav.bar', role: 'nav' }), sec('app.topbar', { pad: 's' }, [row('1fr auto', [col([H(x.a.title, 'l', 1), P(x.a.sub, { muted: true })], { gap: 0.3 }), btnRow([T('Filter: mine', { variant: 'plain' }), T('Sort: due', { variant: 'plain' })])], { keep: true, valign: 'end' })]), sec('app.board', { pad: 's', width: 'full' }, [board])]
+      return [mk('nav', { brand: x.a.name, links: x.a.nav, cta: x.a.primary, variant: 'bar', border: true, build: 'nav.bar', role: 'nav' }), sec('app.topbar', { pad: 's' }, [row('1fr auto', [col([H(x.a.title, 'l', 1), P(x.a.sub, { muted: true })], { gap: 0.3 }), btnRow([T(x.a.heads[0], { variant: 'plain' }), T(x.a.heads[1], { variant: 'plain' })])], { keep: true, valign: 'end' })]), sec('app.board', { pad: 's', width: 'full' }, [board])]
     },
   },
   {
     id: 'settings', name: 'Settings form', kind: 'app',
     build: (x) => {
-      const groups = x.a.settings.map((g) => row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(g.group, 's', 3), P('Changes apply to everyone in this workspace.', { size: 's', muted: true })], { gap: 0.4 }), col(g.fields.map((f) => mk('input', { label: f.label, kind: f.kind, value: f.value, on: f.on })), { gap: 1, variant: 'card', pad: 1.2 })], { gap: 2 }))
-      const left = col([mk('nav', { brand: x.a.name, links: ['Account', ...x.a.settings.map((s) => s.group), 'Billing', 'Danger zone'], variant: 'stacked' })], { pad: 1, sticky: true, variant: 'rule-left' })
-      const right = col([sec('app.topbar', { pad: 's' }, [H('Settings', 'l', 1), P(x.a.sub, { muted: true })]), sec('app.settings', { pad: 's', gap: 2 }, [...groups, mk('divider', { variant: 'heavy' }), btnRow([B('Save changes', 'solid'), B('Discard', 'ghost')])])], { gap: 0 })
+      const groups = x.a.settings.map((g) => row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(g.group, 's', 3), P(x.a.note, { size: 's', muted: true })], { gap: 0.4 }), col(g.fields.map((f) => mk('input', { label: f.label, kind: f.kind, value: f.value, on: f.on })), { gap: 1, variant: 'card', pad: 1.2 })], { gap: 2 }))
+      const left = col([mk('nav', { brand: x.a.name, links: [x.a.heads[4], ...x.a.settings.map((s) => s.group), x.a.heads[5]], variant: 'stacked' })], { pad: 1, sticky: true, variant: 'rule-left' })
+      const right = col([sec('app.topbar', { pad: 's' }, [H(x.a.title, 'l', 1), P(x.a.sub, { muted: true })]), sec('app.settings', { pad: 's', gap: 2 }, [...groups, mk('divider', { variant: 'heavy' }), btnRow([B(x.a.primary, 'solid'), B(x.a.heads[2], 'ghost')])])], { gap: 0 })
       return [row(x.rng.pick(['220px 1fr', '260px 1fr']), [left, right], { keep: true, gap: 0 })]
     },
   },

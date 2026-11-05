@@ -1,7 +1,6 @@
 import { hexToOklch } from '../lib/color'
-import { collectTexts, walk } from '../lib/tree'
+import { walk } from '../lib/tree'
 import type { DNode, Doc } from '../types'
-import { BANNED_PHRASES, EMOJI_RE } from './content'
 import { BANNED_FONTS, getFont } from './fonts'
 import { isBannedHue, paletteIssues } from './palette'
 
@@ -57,16 +56,6 @@ export function critique(doc: Doc): Issue[] {
   }
   visit(root, undefined)
   out.push(total >= 4 && centred / total > 0.6 ? { id: 'centred', level: 'warn', title: 'Everything is centred', detail: `${centred} of ${total} text blocks are centred. Left-align some for tension.` } : { id: 'centred-ok', level: 'pass', title: 'Alignment', detail: `${centred} of ${total} text blocks centred.` })
-
-  // copy clichés and emoji
-  let copyHits = 0
-  collectTexts(root).forEach((x) => {
-    if (BANNED_PHRASES.some((r) => r.test(x.text)) || EMOJI_RE.test(x.text)) {
-      copyHits++
-      out.push({ id: 'copy-' + x.id, level: 'warn', title: 'Generic copy or emoji', detail: `"${x.text.slice(0, 60)}"`, nodeId: x.id })
-    }
-  })
-  if (!copyHits) out.push({ id: 'copy-ok', level: 'pass', title: 'Copy', detail: 'No stock phrases or emoji icons.' })
 
   // sameness: one signature move
   out.push({ id: 'sig', level: 'pass', title: 'Signature move', detail: `Committed to "${t.signature}".` })

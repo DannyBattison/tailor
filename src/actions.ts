@@ -1,24 +1,19 @@
-import { aiBrief, aiReady, aiRewrite, type LlmConfig } from './ai'
 import { archetypesFor, backdropProps, clearBackdrop } from './gen/build'
 import { makeRng } from './lib/rng'
 import { generate, generateGuarded, generateVariants, regenSection, withSignature } from './gen/generate'
 import { loadSigs } from './gen/guard'
-import { APPS, MARKETING } from './gen/content'
 import { paletteOf } from './gen/palette'
 import { genTokens } from './gen/tokens'
 import { ART_KINDS } from './render/art'
-import { walk, collectTexts, duplicateNode, find, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
+import { walk, duplicateNode, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
 import type { DNode, Doc } from './types'
-
-export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model, cliPath: ui.cliPaths[ui.provider] || undefined } }
-const needAi = () => { const { ui } = getState(); if (aiReady(llmConfig(), ui.cli)) return true; setUI({ menu: 'key' }); toast('Pick an AI provider first'); return false }
 
 const rand = () => Math.floor(Math.random() * 99999) + 1
 
 function opts(seed: number) {
   const { ui, doc } = getState()
-  return { seed, kind: ui.kind, mood: ui.mood, brief: ui.brief, locks: ui.locks, prev: doc }
+  return { seed, kind: ui.kind, mood: ui.mood, locks: ui.locks, prev: doc }
 }
 
 /** Full relaunch: a new seed and a new design. Locked parts (palette, fonts, shape, layout) are kept. The only action that changes the seed. */
@@ -35,7 +30,7 @@ export function applySeed(seed: number) {
 export function makeVariants() {
   const { ui } = getState()
   const base = rand()
-  setUI({ variants: generateVariants({ seed: base, kind: ui.kind, mood: ui.mood, brief: ui.brief }, loadSigs()) })
+  setUI({ variants: generateVariants({ seed: base, kind: ui.kind, mood: ui.mood }, loadSigs()) })
 }
 
 export function pickVariant(d: Doc) {
@@ -47,8 +42,8 @@ export function rerollLayout() {
   const { doc } = getState()
   const pool = archetypesFor(doc.meta.kind).filter((a) => a.id !== doc.meta.archetype)
   const next = generate({
-    seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, brief: doc.meta.brief, archetype: pool[Math.floor(Math.random() * pool.length)].id,
-    layoutSeed: rand(), siteKind: doc.meta.siteKind, override: doc.meta.override, prev: doc, locks: { palette: true, fonts: true, shape: true, layout: false, copy: true },
+    seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, archetype: pool[Math.floor(Math.random() * pool.length)].id,
+    layoutSeed: rand(), prev: doc, locks: { palette: true, fonts: true, shape: true, layout: false, copy: true },
   })
   mutate(() => next)
   setUI({ selectedId: null })
@@ -67,14 +62,12 @@ export function rerollPart(part: Part) {
   })
 }
 
-/** Same layout and tokens, different business/copy from the content bank. */
-export function rerollCopy() {
+/** Same layout and tokens, new lorem ipsum. */
+export function rerollText() {
   const { doc } = getState()
-  const ids = (doc.meta.kind === 'marketing' ? MARKETING : APPS).map((c) => c.id).filter((id) => id !== doc.meta.siteKind)
   const next = generate({
-    seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, brief: doc.meta.brief, archetype: doc.meta.archetype, layoutSeed: doc.meta.layoutSeed,
-    contentSeed: rand(), siteKind: ids[Math.floor(Math.random() * ids.length)], prev: doc,
-    locks: { palette: true, fonts: true, shape: true, layout: true, copy: false },
+    seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, archetype: doc.meta.archetype, layoutSeed: doc.meta.layoutSeed,
+    contentSeed: rand(), prev: doc, locks: { palette: true, fonts: true, shape: true, layout: true, copy: false },
   })
   mutate(() => next)
   setUI({ selectedId: null })
@@ -94,7 +87,7 @@ export function rerollImages() {
 export function newDocFromScratch(kind: 'marketing' | 'app') {
   setUI({ kind })
   const { ui } = getState()
-  replaceDoc(generateGuarded({ seed: rand(), kind, mood: ui.mood, brief: ui.brief, locks: { ...ui.locks, layout: false, copy: false }, prev: getState().doc }, loadSigs()))
+  replaceDoc(generateGuarded({ seed: rand(), kind, mood: ui.mood, locks: { ...ui.locks, layout: false, copy: false }, prev: getState().doc }, loadSigs()))
 }
 
 export function deleteSelected() {
@@ -142,45 +135,6 @@ export function regenSelectedSection() {
   if (!next) return toast('This section was edited by hand and has no generator to re-run')
   mutate((d) => ({ ...d, root: mapNode(d.root, sec.id, () => ({ ...next, id: sec.id })) }))
   setUI({ selectedId: sec.id })
-}
-
-export async function aiGenerate() {
-  const { ui } = getState()
-  if (!needAi()) return
-  setUI({ busy: 'Writing copy…' })
-  try {
-    const r = await aiBrief(llmConfig(), ui.brief, ui.kind)
-    const doc = generateGuarded({ ...opts(rand()), mood: r.mood ?? ui.mood, override: r.override, prev: getState().doc }, loadSigs())
-    replaceDoc(doc)
-    if (r.mood) setUI({ mood: r.mood })
-    toast('Copy written. Design decisions stayed algorithmic.')
-  } catch (e) {
-    toast((e as Error).message)
-  } finally {
-    setUI({ busy: '' })
-  }
-}
-
-export async function aiRewriteSection(instruction: string) {
-  const { ui, doc } = getState()
-  const sec = ui.selectedId ? nearestSection(doc.root, ui.selectedId) : null
-  if (!sec) return toast('Select something inside a section first')
-  if (!needAi()) return
-  setUI({ busy: 'Rewriting section…' })
-  try {
-    const items = collectTexts(sec)
-    const res = await aiRewrite(llmConfig(), items, instruction, `${doc.meta.name} (${doc.meta.siteKind}). ${doc.meta.brief}`)
-    mutate((d) => {
-      let root = d.root
-      for (const r of res) if (find(root, r.id)) root = updateProps(root, r.id, { [r.prop]: r.text })
-      return { ...d, root }
-    })
-    toast(`Rewrote ${res.length} strings`)
-  } catch (e) {
-    toast((e as Error).message)
-  } finally {
-    setUI({ busy: '' })
-  }
 }
 
 /** Light/dark for the design itself (not the editor chrome). Needs a generated palette to derive from. */
