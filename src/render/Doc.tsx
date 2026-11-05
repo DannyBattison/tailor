@@ -1,8 +1,10 @@
 import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
-import { textOn } from '../lib/color'
 import type { DNode, Props, Tokens } from '../types'
 import { Art, type ArtKind } from './art'
 import { tokenVars } from './css'
+import { placeholdUrl } from './placehold'
+
+export { placeholdUrl }
 
 export interface RenderCtx {
   tokens?: Tokens
@@ -11,19 +13,6 @@ export interface RenderCtx {
   hoverId?: string | null
 }
 const Ctx = createContext<RenderCtx>({ editor: false })
-
-/** https://placehold.co URL in palette colours, sized from the node's ratio. */
-export function placeholdUrl(p: Props, t?: Tokens, w = 1200): string {
-  // hideText: draw the label in the background colour so only a flat stand-in remains
-  const [rw, rh] = String(p.ratio ?? '4/3').split('/').map(Number)
-  const h = Math.round((w * (rh || 3)) / (rw || 4))
-  const pal = t?.palette
-  const bgs = pal ? [pal.surface, pal.accent2, pal.accent, pal.ink] : ['#e5e5e5', '#d4d4d4', '#bdbdbd', '#333333']
-  const bg = bgs[(p.tone ?? 0) % 4]
-  const fg = p.hideText ? bg : pal ? textOn(bg, 0) : '#222222'
-  const text = p.caption || `${rw || 4}:${rh || 3}`
-  return `https://placehold.co/${w}x${h}/${bg.slice(1)}/${fg.slice(1)}?text=${encodeURIComponent(text).replace(/%20/g, '+')}`
-}
 
 const PAD: Record<string, number> = { none: 0, s: 1.1, m: 1.8, l: 2.6, xl: 3.6 }
 

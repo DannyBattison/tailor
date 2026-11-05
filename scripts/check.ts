@@ -34,14 +34,23 @@ ok(contrastFails === 0, 'palettes pass contrast')
 if (fail) { console.log(fail + ' failures'); process.exit(1) }
 console.log('all checks passed')
 import { designSystem } from '../src/designSystem'
-import { placeholdUrl } from '../src/render/Doc'
+import { placeholdColors, placeholdUrl } from '../src/render/placehold'
+import { contrast as ctr } from '../src/lib/color'
 {
   const d = generate({ seed: 7, kind: 'marketing', mood: '', brief: '' })
   const ds = designSystem(d)
   const bad = !ds.colors.bg.hex || !ds.typography.googleFonts.includes('fonts.googleapis.com') || !ds.rules.length || !ds.layout.outline.length
   if (bad) { console.log('FAIL design system incomplete'); process.exit(1) }
   const u = placeholdUrl({ ratio: '16/9', tone: 2, caption: 'Hi there' }, d.tokens)
-  if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
+  if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there&font=(playfair-display|source-sans-pro)$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
+  // every placeholder pair is coloured (not grey) and readable
+  for (let sd = 1; sd <= 60; sd++) {
+    const dd = generate({ seed: sd * 19, kind: 'marketing', mood: '', brief: '' })
+    for (const tn of [0, 1, 2, 3]) {
+      const { bg, fg } = placeholdColors(dd.tokens.palette, tn)
+      if (ctr(fg, bg) < 4.4) { console.log('FAIL placehold contrast', sd, tn, bg, fg); process.exit(1) }
+    }
+  }
   console.log('design system + placehold ok')
 }
 

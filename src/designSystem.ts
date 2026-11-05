@@ -2,7 +2,7 @@ import { paletteOf } from './gen/palette'
 import { DOC_CSS, tokenVars, typeStep } from './render/css'
 import { fontsUrl, fontStacks, getFont } from './gen/fonts'
 import { contrast, hexToOklch } from './lib/color'
-import { placeholdUrl } from './render/Doc'
+import { placeholdColors, placeholdUrl } from './render/placehold'
 import { walk } from './lib/tree'
 import type { DNode, Doc } from './types'
 
@@ -88,7 +88,7 @@ export function designSystem(doc: Doc) {
     },
     images: {
       default: 'Generated SVG art drawn only with palette variables (blocks, stripes, arches, dots, waves, sun, rings). Never grey boxes.',
-      placeholder: images ? `https://placehold.co/WxH/${pal.surface.slice(1)}/${pal.ink.slice(1)}?text=Label (example: ${placeholdUrl({ ...images.props, source: 'placehold' }, t)})` : undefined,
+      placeholder: images ? { note: 'placehold.co stand-ins use palette colour pairs (never grey) and the theme serif/sans. URL shape: https://placehold.co/WxH/BG/FG?text=Label&font=playfair-display|source-sans-pro', pairs: [0, 1, 2, 3].map((n) => placeholdColors(t.palette, n)), example: placeholdUrl({ ...images.props, source: 'placehold' }, t) } : undefined,
     },
     cssVariables: tokenVars(t),
     rules: [
