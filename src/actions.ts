@@ -1,6 +1,6 @@
 import * as R from './gen/reroll'
 import { fromCode } from './gen/code'
-import { generateGuarded, generateVariants } from './gen/generate'
+import { generate, generateGuarded, generateVariants, partsOf } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { paletteOf } from './gen/palette'
 import { duplicateNode, findParent, mapNode, removeNode, updateProps } from './lib/tree'
@@ -49,10 +49,13 @@ export function rerollPart(part: Part) { mutate((d) => R.rerollToken(d, part, ra
 export function rerollText() { mutate((d) => R.rerollText(d, rand5()), '', true); setUI({ selectedId: null }) }
 export function rerollBackdrops() { mutate((d) => R.rerollBackdrops(d, rand5()), '', true) }
 
+/** Switch between marketing site and app UI. The design's seed (parts, mood, boldness, mode) carries over; only the kind changes. */
 export function newDocFromScratch(kind: 'marketing' | 'app') {
+  const { doc } = getState()
   setUI({ kind })
-  const { ui } = getState()
-  replaceDoc(generateGuarded({ seed: rand(), kind, mood: ui.mood, locks: { ...ui.locks, layout: false, copy: false }, prev: getState().doc }, loadSigs()))
+  if (doc.meta.kind === kind) return
+  const t = doc.tokens
+  replaceDoc(generate({ seed: doc.meta.seed, kind, mood: doc.meta.mood, parts: partsOf(doc), bgBold: t.bgBold, mode: t.mode }))
 }
 
 export function deleteSelected() {
