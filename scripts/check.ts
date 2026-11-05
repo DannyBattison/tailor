@@ -50,7 +50,7 @@ import { withSignature } from '../src/gen/generate'
 import { genTokens } from '../src/gen/tokens'
 {
   const d = generate({ seed: 11, kind: 'marketing', mood: '', brief: '' })
-  const locked = { palette: true, fonts: true, shape: true, rhythm: true, signature: true }
+  const locked = { palette: true, fonts: true, shape: true, signature: true }
   const t = genTokens(999, d.meta.mood, d.tokens, { ...locked, fonts: false })
   const ok2 = JSON.stringify({ ...t, fontId: 0 }) === JSON.stringify({ ...d.tokens, fontId: 0 })
   const lay = generate({ seed: d.meta.seed, kind: 'marketing', mood: d.meta.mood, brief: '', archetype: 'index', layoutSeed: 5, siteKind: d.meta.siteKind, prev: d, locks: { ...locked, layout: false, copy: true } })

@@ -35,9 +35,7 @@ export function Generate() {
   const rows: Row[] = [
     { label: 'Palette', hint: 'colours', lock: 'palette', run: part('palette'), extra: { label: 'From image…', run: () => file.current?.click() } },
     { label: 'Fonts', hint: 'type pairing', lock: 'fonts', run: part('fonts') },
-    { label: 'Shape', hint: 'radius, border, shadow', lock: 'shape', run: part('shape') },
-    { label: 'Rhythm', hint: 'density, scale, case', lock: 'rhythm', run: part('rhythm') },
-    { label: 'Signature', hint: doc.tokens.signature, lock: 'signature', run: part('signature') },
+    { label: 'Shape', hint: 'sliders, shadow, case, signature', lock: 'shape', run: part('shape') },
     { label: 'Layout', hint: archetypesFor(doc.meta.kind).find((a) => a.id === doc.meta.archetype)?.name ?? '', lock: 'layout', run: rerollLayout },
     { label: 'Copy', hint: 'another business', lock: 'copy', run: rerollCopy },
     { label: 'Backdrops', hint: 'hero and band backgrounds', run: rerollBackdrops },

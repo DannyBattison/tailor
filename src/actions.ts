@@ -9,7 +9,7 @@ import { genTokens } from './gen/tokens'
 import { ART_KINDS } from './render/art'
 import { walk, collectTexts, duplicateNode, find, findParent, mapNode, nearestSection, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
-import type { DNode, Doc, Signature } from './types'
+import type { DNode, Doc } from './types'
 
 export const llmConfig = (): LlmConfig => { const { ui } = getState(); return { provider: ui.provider, key: ui.apiKey, model: ui.model, cliPath: ui.cliPaths[ui.provider] || undefined } }
 const needAi = () => { const { ui } = getState(); if (aiReady(llmConfig(), ui.cli)) return true; setUI({ menu: 'key' }); toast('Pick an AI provider first'); return false }
@@ -48,25 +48,23 @@ export function rerollLayout() {
   const pool = archetypesFor(doc.meta.kind).filter((a) => a.id !== doc.meta.archetype)
   const next = generate({
     seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, brief: doc.meta.brief, archetype: pool[Math.floor(Math.random() * pool.length)].id,
-    layoutSeed: rand(), siteKind: doc.meta.siteKind, override: doc.meta.override, prev: doc, locks: { palette: true, fonts: true, shape: true, rhythm: true, signature: true, layout: false, copy: true },
+    layoutSeed: rand(), siteKind: doc.meta.siteKind, override: doc.meta.override, prev: doc, locks: { palette: true, fonts: true, shape: true, layout: false, copy: true },
   })
   mutate(() => next)
   setUI({ selectedId: null })
 }
 
-export type Part = 'palette' | 'fonts' | 'shape' | 'rhythm' | 'signature'
+export type Part = 'palette' | 'fonts' | 'shape'
 
-/** Re-roll one token family only, keeping everything else, including the seed. */
+/** Re-roll one token family only, keeping everything else, including the seed. 'shape' covers the whole Shape & rhythm section. */
 export function rerollPart(part: Part) {
-  const locks = { palette: true, fonts: true, shape: true, rhythm: true, signature: true, [part]: false }
-  const { doc } = getState()
-  if (part === 'signature') {
-    const sigs: Signature[] = ['hardShadow', 'oversized', 'ruled', 'grain', 'tilted', 'inverted', ...(doc.meta.kind === 'marketing' ? ['marquee' as const] : [])]
-    const pool = sigs.filter((s) => s !== doc.tokens.signature)
-    return mutate((d) => withSignature(d, pool[Math.floor(Math.random() * pool.length)]))
-  }
+  const locks = { palette: true, fonts: true, shape: true, [part]: false }
   const seed = rand()
-  mutate((d) => ({ ...d, tokens: genTokens(seed, d.meta.mood, d.tokens, locks) }))
+  mutate((d) => {
+    const t = genTokens(seed, d.meta.mood, d.tokens, locks)
+    // the signature move also changes the tree (marquee band, inverted section), so route it through withSignature
+    return part === 'shape' ? withSignature({ ...d, tokens: { ...t, signature: d.tokens.signature } }, t.signature) : { ...d, tokens: t }
+  })
 }
 
 /** Same layout and tokens, different business/copy from the content bank. */
@@ -76,7 +74,7 @@ export function rerollCopy() {
   const next = generate({
     seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, brief: doc.meta.brief, archetype: doc.meta.archetype, layoutSeed: doc.meta.layoutSeed,
     contentSeed: rand(), siteKind: ids[Math.floor(Math.random() * ids.length)], prev: doc,
-    locks: { palette: true, fonts: true, shape: true, rhythm: true, signature: true, layout: true, copy: false },
+    locks: { palette: true, fonts: true, shape: true, layout: true, copy: false },
   })
   mutate(() => next)
   setUI({ selectedId: null })

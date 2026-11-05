@@ -100,8 +100,6 @@ export interface Locks {
   palette: boolean
   fonts: boolean
   shape: boolean
-  rhythm: boolean
-  signature: boolean
   layout: boolean
   copy: boolean
 }

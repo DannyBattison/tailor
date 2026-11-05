@@ -35,7 +35,7 @@ const LS_KEY = 'hm.key'
 
 const defaultUI = (): UI => ({
   selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '', brief: '',
-  seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, rhythm: false, signature: false, layout: false, copy: false },
+  seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false },
   variants: null, apiKey: '', rememberKey: false, model: 'claude-sonnet-5-5', provider: 'api', cli: {}, cliPaths: {}, busy: '', toast: '', menu: '',
 })
 

@@ -19,6 +19,9 @@ export function genFontId(seed: number, mood: string): string {
   return rng.pick(pool.length ? pool : FONT_PAIRS).id
 }
 
+/** Mood ranges stay the bias, but stretched 40% of the way to the global range so re-rolls move visibly. */
+const widen = ([lo, hi]: [number, number], [glo, ghi]: [number, number]): [number, number] => [lo + (glo - lo) * 0.4, hi + (ghi - hi) * 0.4]
+
 export function genShape(seed: number, mood: string) {
   const rng = stageRng(seed, 'shape')
   const m = MOODS[mood] ?? MOODS.editorial
@@ -31,10 +34,10 @@ export function genShape(seed: number, mood: string) {
     radius: rng.pick(m.radius),
     border,
     shadow,
-    density: +rng.range(...m.density).toFixed(2),
-    scale: +rng.range(...m.scale).toFixed(3),
+    density: +rng.range(...widen(m.density, [0.8, 1.3])).toFixed(2),
+    scale: +rng.range(...widen(m.scale, [1.15, 1.65])).toFixed(3),
     headingCase: rng.pick(m.cases),
-    tracking: +rng.range(...m.tracking).toFixed(3),
+    tracking: +rng.range(...widen(m.tracking, [-0.05, 0.08])).toFixed(3),
     signature,
   }
 }
@@ -46,7 +49,7 @@ export function fixSignature(t: Tokens): Tokens {
   return t
 }
 
-/** Generate tokens; locked parts are copied from `prev`. Shape, rhythm and signature are locked independently. */
+/** Generate tokens; locked parts are copied from `prev`. Shape = everything in the Shape & rhythm section: corners, borders, shadow, density, type scale, tracking, heading case and signature move. */
 export function genTokens(seed: number, mood: string, prev?: Tokens, locks?: Partial<Locks>): Tokens {
   const keep = (k: keyof Locks) => !!prev && !!locks?.[k]
   const pal = keep('palette') ? { palette: prev!.palette, hue: prev!.hue, spec: prev!.spec, bgBold: prev!.bgBold, mode: prev!.mode, paletteStrategy: prev!.paletteStrategy } : genPaletteTokens(seed, mood, prev?.bgBold ?? DEFAULT_BG_BOLD, prev?.mode)
@@ -57,11 +60,11 @@ export function genTokens(seed: number, mood: string, prev?: Tokens, locks?: Par
     radius: keep('shape') ? prev!.radius : g.radius,
     border: keep('shape') ? prev!.border : g.border,
     shadow: keep('shape') ? prev!.shadow : g.shadow,
-    density: keep('rhythm') ? prev!.density : g.density,
-    scale: keep('rhythm') ? prev!.scale : g.scale,
-    headingCase: keep('rhythm') ? prev!.headingCase : g.headingCase,
-    tracking: keep('rhythm') ? prev!.tracking : g.tracking,
-    signature: keep('signature') ? prev!.signature : g.signature,
+    density: keep('shape') ? prev!.density : g.density,
+    scale: keep('shape') ? prev!.scale : g.scale,
+    headingCase: keep('shape') ? prev!.headingCase : g.headingCase,
+    tracking: keep('shape') ? prev!.tracking : g.tracking,
+    signature: keep('shape') ? prev!.signature : g.signature,
   }
   return fixSignature(t)
 }
