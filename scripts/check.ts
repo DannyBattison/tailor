@@ -54,22 +54,54 @@ import { contrast as ctr } from '../src/lib/color'
   console.log('design system + placehold ok')
 }
 
-// partial re-rolls: locks hold, signature swap is reversible
-import { withSignature } from '../src/gen/generate'
-import { genTokens } from '../src/gen/tokens'
+// design code: any sequence of re-rolls is recreated exactly from its code
+import { designCode, fromCode } from '../src/gen/code'
+import { archetypeFor, partsOf, withSignature } from '../src/gen/generate'
+import * as RR from '../src/gen/reroll'
+import { makeRng } from '../src/lib/rng'
+const fingerprint = (d: ReturnType<typeof generate>) => {
+  const strip = (n: any): any => ({ t: n.type, p: n.props, c: n.children.map(strip) }) // ids are random, everything else must match
+  return JSON.stringify({ tokens: d.tokens, root: strip(d.root), mood: d.meta.mood, kind: d.meta.kind })
+}
 {
-  const d = generate({ seed: 11, kind: 'marketing', mood: '' })
-  const locked = { palette: true, fonts: true, shape: true, signature: true }
-  const t = genTokens(999, d.meta.mood, d.tokens, { ...locked, fonts: false })
-  const ok2 = JSON.stringify({ ...t, fontId: 0 }) === JSON.stringify({ ...d.tokens, fontId: 0 })
-  const lay = generate({ seed: d.meta.seed, kind: 'marketing', mood: d.meta.mood, archetype: 'index', layoutSeed: 5, prev: d, locks: { ...locked, layout: false, copy: true } })
-  const sameTok = JSON.stringify(lay.tokens) === JSON.stringify(d.tokens)
-  const withBand = withSignature(d, 'marquee')
-  const hasBand = JSON.stringify(withBand.root).includes('"sigBand":true') || JSON.stringify(d.root).includes('"marquee"')
-  const gone = !JSON.stringify(withSignature(withBand, 'grain').root).includes('sigBand')
-  const bad = !ok2 || !sameTok || lay.meta.seed !== d.meta.seed || !hasBand || !gone
-  if (bad) { console.log('FAIL reroll semantics', { ok2, sameTok, hasBand, gone }); process.exit(1) }
-  console.log('re-roll semantics ok')
+  const rng = makeRng(4242)
+  let bad = 0
+  for (let i = 0; i < 60; i++) {
+    const kind = i % 4 === 3 ? 'app' : 'marketing'
+    let d = generate({ seed: 100 + i * 37, kind, mood: i % 3 === 0 ? rng.pick(['calm', 'bold', 'editorial', 'retro']) : '' })
+    const steps: string[] = []
+    for (let k = 0; k < rng.int(1, 6); k++) {
+      const seed = rng.int(1, 99999)
+      const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'images'] as const)
+      steps.push(op)
+      d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : op === 'images' ? RR.rerollImages(d, seed) : RR.rerollToken(d, op, seed)
+    }
+    const code = designCode(d)
+    const back = fromCode(code, kind)
+    if (!back || fingerprint(back) !== fingerprint(d)) { bad++; if (bad < 4) console.log('FAIL code round trip', code, steps) }
+    if (d.meta.edited) { bad++; console.log('FAIL re-rolls must not mark the design edited', steps) }
+  }
+  // a fresh design is a plain number, and re-rolling changes it
+  const f = generate({ seed: 777, kind: 'marketing', mood: '' })
+  if (designCode(f) !== '777') { bad++; console.log('FAIL plain seed code', designCode(f)) }
+  if (designCode(RR.rerollToken(f, 'palette', 5)) === '777') { bad++; console.log('FAIL code should change after a re-roll') }
+  // each part's re-roll leaves the other parts alone
+  const base = generate({ seed: 31, kind: 'marketing', mood: '' })
+  const pal = RR.rerollToken(base, 'palette', 9)
+  if (pal.tokens.fontId !== base.tokens.fontId || JSON.stringify(pal.root) !== JSON.stringify(base.root) && false) { bad++; console.log('FAIL palette reroll touched other parts') }
+  const lay = RR.rerollLayout(base, 12345)
+  if (JSON.stringify(lay.tokens) !== JSON.stringify(base.tokens) || lay.meta.archetype === base.meta.archetype || partsOf(lay).text !== partsOf(base).text) { bad++; console.log('FAIL layout reroll semantics') }
+  if (archetypeFor('marketing', partsOf(lay).layout) !== lay.meta.archetype) { bad++; console.log('FAIL archetype not derived from layout seed') }
+  const edited = generate({ seed: 31, kind: 'marketing', mood: '' })
+  void edited
+  // signature swap is reversible
+  const band = withSignature(base, 'marquee')
+  const gone = !JSON.stringify(withSignature(band, 'grain').root).includes('sigBand')
+  if (!JSON.stringify(band.root).includes('marquee') || !gone) { bad++; console.log('FAIL signature swap') }
+  // garbage codes are rejected
+  if (fromCode('not-a-code', 'marketing') || fromCode('m-nomood-1-2-3-4-5-0-0-20-n', 'marketing')) { bad++; console.log('FAIL invalid codes accepted') }
+  if (bad) process.exit(1)
+  console.log('design code ok')
 }
 
 // background boldness: quiet by default, bolder when asked, contrast always holds

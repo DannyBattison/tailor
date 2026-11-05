@@ -31,7 +31,7 @@ export function Design() {
     for (const id of ids) root = updateProps(root, id, { source })
     return { ...d, root }
   })
-  const setBold = (v: number) => mutate((d) => (d.tokens.spec ? { ...d, tokens: { ...d.tokens, bgBold: v, palette: paletteOf(d.tokens.spec, v, d.tokens.mode) } } : d), 'bgbold')
+  const setBold = (v: number) => mutate((d) => (d.tokens.spec ? { ...d, tokens: { ...d.tokens, bgBold: v, palette: paletteOf(d.tokens.spec, v, d.tokens.mode) } } : d), 'bgbold', true)
   const issues = paletteIssues(t.palette)
   const slider = (label: string, key: keyof Tokens, min: number, max: number, step: number, fmt: (v: number) => string = String) => (
     <div className="field">

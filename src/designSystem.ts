@@ -1,3 +1,4 @@
+import { designCode } from './gen/code'
 import { paletteOf } from './gen/palette'
 import { DOC_CSS, tokenVars, typeStep } from './render/css'
 import { fontsUrl, fontStacks, getFont } from './gen/fonts'
@@ -117,11 +118,11 @@ export function designSystem(doc: Doc) {
   walk(doc.root, (n) => { if (n.type === 'section' && n.props.build && !pageKinds.includes(n.props.build)) pageKinds.push(n.props.build) })
   const images = (() => { let w: any; walk(doc.root, (n) => { if (!w && n.type === 'image') w = n }); return w })()
   return {
-    format: 'handmade-design-system/1',
+    format: 'tailor-design-system/1',
     name: doc.meta.name,
     kind: doc.meta.kind,
     mood: doc.meta.mood,
-    seed: doc.meta.seed,
+    designCode: designCode(doc),
     colors,
     backgroundBoldness: doc.tokens.bgBold ?? null,
     mode: doc.tokens.mode ?? (doc.tokens.spec?.dark ? 'dark' : 'light'),

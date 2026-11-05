@@ -23,7 +23,7 @@ function TopBar() {
   const close = () => setMenu('')
   return (
     <header className="topbar">
-      <div className="logo">Handmade<small>design that doesn't look generated</small></div>
+      <div className="logo" aria-label="Tailor"><span className="word">t<span className="ai">ai</span>lor</span><small>design that doesn't look generated</small></div>
       <div className="group">
         <button disabled={!s.past.length} onClick={undo} title="Undo (Ctrl+Z)">Undo</button>
         <button disabled={!s.future.length} onClick={redo} title="Redo (Ctrl+Shift+Z)">Redo</button>
@@ -62,8 +62,8 @@ function TopBar() {
         if (!f) return
         try {
           const d = JSON.parse(await f.text()) as Doc
-          if (!d.root || !d.tokens || !d.meta) throw new Error('Not a Handmade tree')
-          commit(d); setUI({ selectedId: null, seed: d.meta.seed }); toast('Imported')
+          if (!d.root || !d.tokens || !d.meta) throw new Error('Not a Tailor page tree')
+          commit(d, '', true); setUI({ selectedId: null, codeInput: null }); toast('Imported')
         } catch (er) { toast((er as Error).message) }
       }} />
     </header>

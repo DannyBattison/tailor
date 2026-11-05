@@ -1,4 +1,4 @@
-# Handmade
+# Tailor
 
 A tool that generates a design system that doesn't look AI-generated, and exports it for an AI to build a whole multi-page site with.
 Design decisions are taken out of any model's hands: seeded tokens → layout archetype → component tree → HTML. The canvas is a
@@ -7,7 +7,7 @@ specimen page with lorem ipsum text; the real output is the design system JSON /
     npm install --include=dev
     npm run dev           # editor in the browser
     npm run build         # typecheck + production build
-    npm test              # generation sanity checks (determinism, contrast, hue ban, re-roll semantics, export)
+    npm test              # generation sanity checks (determinism, contrast, hue ban, design-code round trips, export)
 
 * `src/gen` – seeded (mulberry32) token, palette (OKLCH), font, archetype, lorem text and critique logic. Pure functions.
 * `src/render` – tree → React components + one doc stylesheet shared by canvas and export (CSS variables, clamp()/cqw, @container).
@@ -21,3 +21,10 @@ specimen page with lorem ipsum text; the real output is the design system JSON /
 
 If Electron's binary is missing (`node_modules/electron/dist`), run `node node_modules/electron/install.js`.
 There is no AI integration and no network use beyond Google Fonts and placehold.co images.
+
+## Seeds
+
+The seed shown in the Generate tab is a design code that updates with every re-roll and rebuilds the generated design exactly.
+A fresh design is a plain number (`48213`); once parts have been re-rolled it spells out each one
+(`m-editorial-1k2-9x1-…`: kind, mood, then the palette, fonts, shape, layout, text, backdrop and image seeds, background boldness, mode).
+Hand edits (tree edits, sliders, swatches, section re-rolls) are not part of the code; export the page tree JSON to keep those.

@@ -76,6 +76,17 @@ export interface Tokens {
 
 export type Kind = 'marketing' | 'app'
 
+/** Independent seeds, one per re-rollable part. 0 for backdrops/images means "as the layout built them". */
+export interface PartSeeds {
+  palette: number
+  fonts: number
+  shape: number
+  layout: number
+  text: number
+  backdrops: number
+  images: number
+}
+
 export interface Meta {
   seed: number
   kind: Kind
@@ -83,6 +94,9 @@ export interface Meta {
   archetype: string
   layoutSeed: number
   contentSeed?: number
+  parts?: PartSeeds
+  /** changed by hand since generation (tree edits, sliders, swatches): the design code no longer recreates it exactly */
+  edited?: boolean
   name: string
 }
 

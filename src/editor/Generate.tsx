@@ -1,6 +1,8 @@
 import { useRef } from 'react'
-import { applySeed, makeVariants, newDesign, newDocFromScratch, pickVariant, regenSelectedSection, rerollBackdrops, rerollImages, rerollLayout, rerollPart, rerollText, type Part } from '../actions'
+import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, regenSelectedSection, rerollBackdrops, rerollImages, rerollLayout, rerollPart, rerollText, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
+import { designCode } from '../gen/code'
+import { copyText } from '../export'
 import { getFont, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
 import { paletteFromImage } from '../imagePalette'
@@ -15,6 +17,9 @@ export function Generate() {
   const { ui, doc } = useStore()
   const file = useRef<HTMLInputElement>(null)
   const inSection = !!(ui.selectedId && nearestSection(doc.root, ui.selectedId))
+  const code = designCode(doc)
+  const shown = ui.codeInput ?? code
+  const dirty = ui.codeInput !== null && ui.codeInput.trim() !== code
   const lock = (k: keyof Locks) => setUI({ locks: { ...ui.locks, [k]: !ui.locks[k] } })
 
   async function onImage(f?: File) {
@@ -75,16 +80,18 @@ export function Generate() {
       </div>
       <div className="row2 seedrow">
         <span className="seedlabel">Seed</span>
-        <input type="number" value={ui.seed} onChange={(e) => setUI({ seed: Math.max(1, +e.target.value || 1) })} />
-        <button onClick={() => applySeed(ui.seed)} disabled={ui.seed === doc.meta.seed} title="Rebuild the design for this seed">Load</button>
+        <input type="text" spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && dirty) loadCode(shown) }} title="Design code: recreates this design exactly" />
+        <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this code">Load</button>
+        <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's code">Copy</button>
       </div>
-      <p className="hint">The seed only changes when you start a new design. Lock a part to keep it through New design; re-roll a part to change just that.</p>
+      <p className="hint">The seed updates with every re-roll and rebuilds this design exactly. A fresh design is a plain number; once you re-roll parts it spells out each part. Lock a part to keep it through New design.</p>
+      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches, section re-rolls). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
       <div className="parts">{rows.map(rowView)}</div>
 
       <p className="hint">The page on the canvas is a specimen with lorem ipsum text. The export is the design system; your AI writes the real copy.</p>
       <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { onImage(e.target.files?.[0]); e.target.value = '' }} />
 
-      <p className="meta">Now: <b>{doc.meta.name}</b> · mood {doc.meta.mood} · seed {doc.meta.seed}</p>
+      <p className="meta">Now: <b>{doc.meta.name}</b> · mood {doc.meta.mood}</p>
       {ui.variants && (
         <>
           <label className="lbl">Pick a direction</label>
@@ -93,7 +100,7 @@ export function Generate() {
               loadFont(getFont(v.tokens.fontId))
               const name = archetypesFor(v.meta.kind).find((a) => a.id === v.meta.archetype)?.name
               return (
-                <button key={i} className="variant" onClick={() => pickVariant(v)} title={`${name} · seed ${v.meta.seed}`}>
+                <button key={i} className="variant" onClick={() => pickVariant(v)} title={`${name} · seed ${designCode(v)}`}>
                   <div className="thumb"><div style={{ width: 1280, transform: 'scale(0.125)', transformOrigin: 'top left', pointerEvents: 'none' }}><DocView root={v.root} tokens={v.tokens} /></div></div>
                   <span>{name}</span>
                 </button>

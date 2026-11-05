@@ -12,7 +12,8 @@ export interface UI {
   rightTab: 'node' | 'design'
   kind: Kind
   mood: string
-  seed: number
+  /** what's typed in the design-code box; null = show the current design's code */
+  codeInput: string | null
   locks: Locks
   variants: Doc[] | null
   busy: string
@@ -26,7 +27,7 @@ const LS_UI = 'hm.ui'
 
 const defaultUI = (): UI => ({
   selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '',
-  seed: Math.floor(Math.random() * 99999) + 1, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false },
+  codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false },
   variants: null, busy: '', toast: '', menu: '',
 })
 
@@ -34,13 +35,12 @@ function load(): State {
   const ui = defaultUI()
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
-    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '' })
+    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', codeInput: null })
     localStorage.removeItem('hm.key') // earlier builds could store an API key here; there is no AI integration any more
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
     if (d?.root && d.tokens) return { doc: d, past: [], future: [], ui }
   } catch { /* fall through */ }
-  const doc = generateGuarded({ seed: ui.seed, kind: ui.kind, mood: ui.mood }, loadSigs())
-  ui.seed = doc.meta.seed
+  const doc = generateGuarded({ seed: Math.floor(Math.random() * 99999) + 1, kind: ui.kind, mood: ui.mood }, loadSigs())
   pushSig(sigOf(doc))
   return { doc, past: [], future: [], ui }
 }
@@ -54,7 +54,7 @@ function persist() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(LS_DOC, JSON.stringify(state.doc))
-      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, ...rest } = state.ui
+      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, codeInput: _c, ...rest } = state.ui
       localStorage.setItem(LS_UI, JSON.stringify(rest))
     } catch { /* quota */ }
   }, 250)
@@ -67,14 +67,16 @@ export const useStore = () => useSyncExternalStore((l) => { listeners.add(l); re
 let lastKey = ''
 let lastAt = 0
 /** Replace the document, pushing history. Same `key` within 900ms coalesces into one undo step (sliders, typing). */
-export function commit(doc: Doc, key = '') {
+export function commit(doc: Doc, key = '', generated = false) {
+  // anything that isn't a re-roll is a hand edit: the design code can no longer recreate the result exactly
+  if (!generated && !doc.meta.edited) doc = { ...doc, meta: { ...doc.meta, edited: true } }
   const now = Date.now()
   const merge = key && key === lastKey && now - lastAt < 900
   lastKey = key
   lastAt = now
   set({ ...state, doc, past: merge ? state.past : [...state.past, state.doc].slice(-100), future: [] })
 }
-export const mutate = (fn: (d: Doc) => Doc, key = '') => commit(fn(state.doc), key)
+export const mutate = (fn: (d: Doc) => Doc, key = '', generated = false) => commit(fn(state.doc), key, generated)
 export function undo() {
   const prev = state.past[state.past.length - 1]
   if (!prev) return
@@ -95,6 +97,6 @@ export function toast(msg: string) {
 /** Load a brand-new document (keeps undo history so a bad roll can be undone). */
 export function replaceDoc(doc: Doc, record = true) {
   if (record) pushSig(sigOf(doc))
-  commit(doc)
-  setUI({ selectedId: null, seed: doc.meta.seed, variants: null })
+  commit(doc, '', true)
+  setUI({ selectedId: null, codeInput: null, variants: null })
 }

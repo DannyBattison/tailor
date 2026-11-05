@@ -15,6 +15,8 @@ textarea{resize:vertical}
 .app{display:grid;grid-template-columns:292px 1fr 300px;grid-template-rows:44px 1fr;height:100%}
 .topbar{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:2px solid var(--c-ink);background:var(--c-panel)}
 .logo{font:700 17px 'Fraunces',Georgia,serif;display:flex;flex-direction:column;line-height:1}
+.logo .word{font-size:19px;letter-spacing:-.01em}
+.logo .ai{color:color-mix(in oklab,var(--c-ink) 52%,var(--c-panel))}
 .logo small{font:400 9.5px 'IBM Plex Sans',sans-serif;color:var(--c-mute);margin-top:2px}
 .group{display:flex;gap:4px}
 .seg{display:flex}.seg button{border-radius:0;margin-left:-1px}.seg button:first-child{border-radius:3px 0 0 3px;margin-left:0}.seg button:last-child{border-radius:0 3px 3px 0}
@@ -106,3 +108,4 @@ details.content[open]{padding-bottom:8px}
 details.content[open]>summary{color:var(--c-ink)}
 details.content>*:not(summary){margin-left:8px;margin-right:8px}
 details.content>*:not(summary):not(:first-of-type){margin-top:6px}
+.seedrow input{font:11.5px 'IBM Plex Mono',ui-monospace,monospace;min-width:0}

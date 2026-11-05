@@ -1,5 +1,5 @@
 import { stageRng } from '../lib/rng'
-import type { Locks, Tokens } from '../types'
+import type { Locks, PartSeeds, Tokens } from '../types'
 import { FONT_PAIRS } from './fonts'
 import { MOODS } from './moods'
 import { DEFAULT_BG_BOLD, genPalette } from './palette'
@@ -49,22 +49,37 @@ export function fixSignature(t: Tokens): Tokens {
   return t
 }
 
-/** Generate tokens; locked parts are copied from `prev`. Shape = everything in the Shape & rhythm section: corners, borders, shadow, density, type scale, tracking, heading case and signature move. */
-export function genTokens(seed: number, mood: string, prev?: Tokens, locks?: Partial<Locks>): Tokens {
-  const keep = (k: keyof Locks) => !!prev && !!locks?.[k]
-  const pal = keep('palette') ? { palette: prev!.palette, hue: prev!.hue, spec: prev!.spec, bgBold: prev!.bgBold, mode: prev!.mode, paletteStrategy: prev!.paletteStrategy } : genPaletteTokens(seed, mood, prev?.bgBold ?? DEFAULT_BG_BOLD, prev?.mode)
-  const fontId = keep('fonts') ? prev!.fontId : genFontId(seed, mood)
-  const g = genShape(seed, mood)
+const PALETTE_KEYS = ['palette', 'hue', 'spec', 'bgBold', 'mode', 'paletteStrategy'] as const
+const SHAPE_KEYS = ['radius', 'border', 'shadow', 'density', 'scale', 'headingCase', 'tracking', 'signature'] as const
+
+/** Palette group of tokens (colours + how they were derived). */
+export const paletteGroup = (t: Tokens) => Object.fromEntries(PALETTE_KEYS.map((k) => [k, t[k]])) as Pick<Tokens, (typeof PALETTE_KEYS)[number]>
+/** Shape group of tokens: everything in the Shape & rhythm section, signature included. */
+export const shapeGroup = (t: Tokens) => Object.fromEntries(SHAPE_KEYS.map((k) => [k, t[k]])) as Pick<Tokens, (typeof SHAPE_KEYS)[number]>
+
+export interface TokenOpts { bgBold?: number; mode?: 'light' | 'dark'; kind?: 'marketing' | 'app' }
+
+/** Tokens straight from part seeds: the same seeds always give the same tokens. */
+export function tokensFromParts(parts: PartSeeds, mood: string, o: TokenOpts = {}): Tokens {
   const t: Tokens = {
-    ...pal, fontId,
-    radius: keep('shape') ? prev!.radius : g.radius,
-    border: keep('shape') ? prev!.border : g.border,
-    shadow: keep('shape') ? prev!.shadow : g.shadow,
-    density: keep('shape') ? prev!.density : g.density,
-    scale: keep('shape') ? prev!.scale : g.scale,
-    headingCase: keep('shape') ? prev!.headingCase : g.headingCase,
-    tracking: keep('shape') ? prev!.tracking : g.tracking,
-    signature: keep('shape') ? prev!.signature : g.signature,
+    ...genPaletteTokens(parts.palette, mood, o.bgBold ?? DEFAULT_BG_BOLD, o.mode),
+    fontId: genFontId(parts.fonts, mood),
+    ...genShape(parts.shape, mood),
   }
-  return fixSignature(t)
+  const fixed = fixSignature(t)
+  if (o.kind === 'app' && fixed.signature === 'marquee') return fixSignature({ ...fixed, signature: 'hardShadow' }) // marquee copy is marketing-only
+  return fixed
+}
+
+/** Same, then copy locked groups from `prev` exactly (so hand-edited colours or fonts survive a lock). */
+export function genTokens(parts: PartSeeds, mood: string, o: TokenOpts & { prev?: Tokens; locks?: Partial<Locks> } = {}): Tokens {
+  const t = tokensFromParts(parts, mood, o)
+  const { prev, locks } = o
+  if (!prev || !locks) return t
+  return fixSignature({
+    ...t,
+    ...(locks.palette ? paletteGroup(prev) : {}),
+    ...(locks.fonts ? { fontId: prev.fontId } : {}),
+    ...(locks.shape ? shapeGroup(prev) : {}),
+  })
 }

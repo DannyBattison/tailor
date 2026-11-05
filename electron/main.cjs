@@ -4,7 +4,7 @@ const path = require('node:path')
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1560, height: 960, minWidth: 1100, minHeight: 700, title: 'Handmade', backgroundColor: '#efeadf',
+    width: 1560, height: 960, minWidth: 1100, minHeight: 700, title: 'Tailor', backgroundColor: '#efeadf',
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   win.setMenuBarVisibility(false)
