@@ -216,7 +216,7 @@ export function designSystem(doc: Doc) {
       'No emoji as icons. Copy is specific and concrete, with no stock phrases ("unlock the power of", "seamless").',
       `Commit to the signature move: ${SIGNATURES[t.signature]}`,
     ],
-    css: { note: 'Stylesheet used by the editor and the HTML export. Apply cssVariables to the root element .d-doc inside a .d-frame wrapper, with data-sig set to the signature name and data-bgm to motion.background.style (drift in app UIs).', base: DOC_CSS.trim() },
+    css: { note: 'Stylesheet used by the preview. Apply cssVariables to the root element .d-doc inside a .d-frame wrapper, with data-sig set to the signature name and data-bgm to motion.background.style (drift in app UIs).', base: DOC_CSS.trim() },
   }
 }
 

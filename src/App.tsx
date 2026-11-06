@@ -4,7 +4,7 @@ import { Canvas } from './editor/Canvas'
 import { CritiquePanel } from './editor/CritiquePanel'
 import { Design } from './editor/Design'
 import { Generate } from './editor/Generate'
-import { copyText, download, exportHtml, slug } from './export'
+import { copyText, download, slug } from './export'
 import { critique } from './gen/critique'
 import { designSystem, designSystemPrompt } from './designSystem'
 import { getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
@@ -40,12 +40,9 @@ function TopBar() {
         <button className="primary" onClick={() => setMenu(menu === 'export' ? '' : 'export')}>Export for AI ▾</button>
         {menu === 'export' && (
           <div className="popover menu" style={{ width: 250 }}>
-            <button className="primary" onClick={async () => { await copyText(designSystemPrompt(doc)); toast('Design system and build instructions copied. Paste into your AI.'); close() }}>Copy as AI prompt</button>
-            <button onClick={() => { download(name + '.design-system.json', JSON.stringify(designSystem(doc), null, 2), 'application/json'); close() }}>Download design system JSON</button>
-            <hr />
-            <small className="hint">The preview page</small>
-            <button onClick={() => { download(name + '.html', exportHtml(doc, ui.wire)); close() }}>Download HTML</button>
-            <button onClick={async () => { await copyText(exportHtml(doc, ui.wire)); toast('HTML copied'); close() }}>Copy HTML</button>
+            <button className="primary" onClick={async () => { await copyText(designSystemPrompt(doc)); toast('Prompt copied. Paste it into your agent.'); close() }}>Copy prompt</button>
+            <button onClick={() => { download(name + '.prompt.md', designSystemPrompt(doc), 'text/markdown'); close() }}>Download prompt</button>
+            <button onClick={() => { download(name + '.handover.json', JSON.stringify(designSystem(doc), null, 2), 'application/json'); close() }}>Download handover JSON</button>
           </div>
         )}
       </div>
