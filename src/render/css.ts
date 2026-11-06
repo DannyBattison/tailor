@@ -309,6 +309,7 @@ export const DOC_CSS = `
 }
 @container doc (max-width: 560px){
   .d-box[data-dir=grid]{grid-template-columns:minmax(0,1fr) !important}
+  .d-box[data-btns=true]{display:flex;flex-wrap:wrap}
   .d-nav-links{display:none}
   .d-nav{padding-inline:calc(var(--space) * 1.2)}
   .d-nav[data-variant=stacked] .d-nav-links{display:flex}

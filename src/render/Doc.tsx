@@ -78,7 +78,7 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
       const dir = p.dir ?? 'col'
       const a = useAttrs(n, 'd-box', {
         'data-dir': dir, 'data-align': p.align, 'data-justify': p.justify, 'data-bg': p.bg, 'data-variant': p.variant,
-        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined, ...bdAttrs(p),
+        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-btns': p.btns ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined, ...bdAttrs(p),
       }, { '--tpl': tpl(p.cols), '--gap': p.gap, '--bpad': p.pad, '--ai': p.valign, ...bdStyle(p) } as CSSProperties)
       return <div {...a}><BackdropLayer p={p} tokens={ctx.tokens} /><Kids n={n} /></div>
     }

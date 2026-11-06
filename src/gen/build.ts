@@ -40,7 +40,7 @@ const B = (label: string, variant = 'solid', extra: Props = {}) => mk('button', 
 const T = (text: string, extra: Props = {}) => mk('tag', { text, ...extra })
 const row = (cols: string | number, children: DNode[], extra: Props = {}) => mk('box', { dir: 'row', cols, ...extra }, children)
 const col = (children: DNode[], extra: Props = {}) => mk('box', { dir: 'col', ...extra }, children)
-const btnRow = (children: DNode[]) => mk('box', { dir: 'row', cols: children.map(() => 'auto').join(' '), gap: 0.6, keep: true, valign: 'center' }, children)
+const btnRow = (children: DNode[]) => mk('box', { dir: 'row', cols: children.map(() => 'auto').join(' '), gap: 0.6, keep: true, btns: true, valign: 'center' }, children)
 const sec = (build: string, props: Props, children: DNode[]) => mk('section', { build, role: build.split('.')[0], ...props }, children)
 const img = (x: Ctx, ratio: string, extra: Props = {}) =>
   mk('image', { art: x.plan.art, seed: x.rng.int(1, 9999), tone: x.rng.weighted<number>([[0, 4], [1, 4], [2, 1.5], [3, 1]]), ratio, ...extra })
