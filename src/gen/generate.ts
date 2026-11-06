@@ -1,7 +1,7 @@
 import { makeRng, stageRng } from '../lib/rng'
 import { mk, walk } from '../lib/tree'
-import type { DNode, Doc, Kind, Locks, Meta, PartSeeds, Signature } from '../types'
-import { ALL_ARCHETYPES, SECTIONS, archetypesFor, backdropProps, clearBackdrop, type Ctx } from './build'
+import type { DNode, Doc, Kind, Locks, Meta, PartSeeds, Props, Signature } from '../types'
+import { ALL_ARCHETYPES, SECTIONS, archetypesFor, backdropProps, bandRhythm, clearBackdrop, planFor, type Ctx } from './build'
 import { loremApp, loremMarketing } from './lorem'
 import { sigOf, tooClose, type Sig } from './guard'
 import { MOOD_NAMES } from './moods'
@@ -38,7 +38,21 @@ const mapAll = (n: DNode, fn: (n: DNode) => DNode): DNode => fn({ ...n, children
 /** Backdrops for every hero/band/tile that takes one (post-order, so a seed always lands the same). */
 export function applyBackdrops(root: DNode, seed: number): DNode {
   const rng = makeRng(seed)
-  return mapAll(root, (n) => (n.props.bdGen ? { ...n, props: { ...n.props, ...clearBackdrop(), ...backdropProps(rng, n.props.bdRole, n.props.bg, !!n.props.bdFlat) } } : n))
+  let hero: Props | undefined
+  return mapAll(root, (n) => {
+    if (!n.props.bdGen) return n
+    const role = n.props.bdRole
+    const base = { ...n.props, ...clearBackdrop(), bdGen: true, bdRole: role, bdFlat: n.props.bdFlat }
+    // one backdrop family per page: the hero chooses, the closing call may echo it, everything else stays plain
+    if (role === 'hero') { hero = backdropProps(rng, 'hero', n.props.bg, !!n.props.bdFlat); return { ...n, props: { ...base, ...hero } } }
+    if (role === 'cta' && hero?.backdrop && rng.chance(0.6)) {
+      const k = hero.backdrop as string
+      const loud = n.props.bg === 'accent' || n.props.bg === 'inverse'
+      const ok = !(loud && ['wash', 'split', 'photo', 'grid'].includes(k)) && !(n.props.bg === 'accent' && k === 'aurora') && !(n.props.bdFlat && ['art', 'photo', 'split'].includes(k))
+      if (ok) return { ...n, props: { ...base, ...hero, bdRole: role, bdFlat: n.props.bdFlat, bdSeed: rng.int(1, 9999) } }
+    }
+    return { ...n, props: base }
+  })
 }
 
 export function generate(o: GenOpts): Doc {
@@ -63,8 +77,10 @@ export function generate(o: GenOpts): Doc {
   const archetype = archetypeFor(o.kind, parts.layout)
   const arch = ALL_ARCHETYPES.find((a) => a.id === archetype)!
   const cont = contentFor(parts.text)
-  const x: Ctx = { rng: stageRng(parts.layout, 'layout:' + arch.id), t: tokens, c: cont.c, a: cont.a }
-  const root = applyBackdrops(mk('page', {}, postProcess(arch.build(x), x, parts.layout)), parts.backdrops)
+  const x: Ctx = { plan: planFor(parts.layout), rng: stageRng(parts.layout, 'layout:' + arch.id), t: tokens, c: cont.c, a: cont.a }
+  const built = mk('page', {}, arch.build(x))
+  bandRhythm(built)
+  const root = applyBackdrops(mk('page', {}, postProcess(built.children, x, parts.layout)), parts.backdrops)
   const meta: Meta = {
     seed: o.seed, kind: o.kind, mood, archetype, layoutSeed: parts.layout, contentSeed: parts.text, parts,
     name: o.kind === 'app' ? cont.a.name : cont.c.name,
@@ -92,8 +108,11 @@ function postProcess(nodes: DNode[], x0: Ctx, layoutSeed: number): DNode[] {
   }
   if (sig === 'inverted') {
     const cands: DNode[] = []
+    const order: DNode[] = []
+    walk(page, (n) => { if (n.type === 'section' && n.props.role !== 'nav') order.push(n) })
+    const calm = (n: DNode) => { const i = order.indexOf(n); return order[i - 1]?.props.bg !== 'inverse' && order[i + 1]?.props.bg !== 'inverse' } // never two inverse bands in a row
     walk(page, (n) => {
-      if (n.type === 'section' && !['nav', 'footer', 'marquee'].includes(n.props.role) && !String(n.props.build).startsWith('hero') && n.props.bg !== 'inverse' && !String(n.props.build).startsWith('app.topbar')) cands.push(n)
+      if (n.type === 'section' && calm(n) && !['nav', 'footer', 'marquee'].includes(n.props.role) && !String(n.props.build).startsWith('hero') && n.props.bg !== 'inverse' && !String(n.props.build).startsWith('app.topbar')) cands.push(n)
     })
     const pick = cands.length ? cands[Math.floor(cands.length / 2)] : null
     if (pick) pick.props = { ...pick.props, bg: 'inverse', sigInverted: true, sigBg: pick.props.bg ?? '' } // remember the fill it replaces so the signature can be swapped back out
@@ -145,7 +164,7 @@ export function withSignature(doc: Doc, sig: Signature): Doc {
   }
   const clean = strip(doc.root)
   const cont = contentFor(doc.meta.contentSeed ?? doc.meta.layoutSeed)
-  const x: Ctx = { rng: makeRng(0), t: tokens, c: cont.c, a: cont.a }
+  const x: Ctx = { plan: planFor(doc.meta.layoutSeed), rng: makeRng(0), t: tokens, c: cont.c, a: cont.a }
   let root: DNode = { ...clean, children: postProcess(clean.children, x, doc.meta.layoutSeed) }
   root = applyBackdrops(root, partsOf(doc).backdrops) // backdrops depend on each band's fill, so redo them after the signature changes it
   return { ...doc, tokens, root }

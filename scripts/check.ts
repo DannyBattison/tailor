@@ -145,6 +145,33 @@ import { luminance } from '../src/lib/color'
   console.log('light/dark ok')
 }
 
+// coherence: every marketing page is the same kind of site, with one visual vocabulary
+{
+  const { walk } = await import('../src/lib/tree')
+  const need = ['nav', 'hero', 'logos', 'steps', 'pricing', 'faq', 'cta', 'footer']
+  let bad = 0
+  const fail = (m: string, seed: number) => { bad++; if (bad < 12) console.log('FAIL coherence', m, seed) }
+  for (let sd = 1; sd <= 120; sd++) {
+    const d = generate({ seed: sd * 53, kind: 'marketing', mood: '' })
+    const roles: string[] = []; const h2: string[] = []; const bds = new Set<string>(); const secs: any[] = []
+    walk(d.root, (n) => {
+      if (n.props.role) roles.push(n.props.role)
+      if (n.type === 'section' && n.props.role !== 'nav') secs.push(n)
+      if (n.type === 'heading' && n.props.level !== 3 && n.props.level !== 1) h2.push(String(n.props.text))
+      if (n.props.backdrop) bds.add(n.props.backdrop)
+    })
+    for (const r of need) if (!roles.includes(r)) fail('missing ' + r + ' in ' + d.meta.archetype, sd * 53)
+    if (!roles.includes('features') && !roles.includes('index')) fail('no features/index in ' + d.meta.archetype, sd * 53)
+    if (new Set(h2).size !== h2.length) fail('duplicate heading ' + d.meta.archetype, sd * 53)
+    if (bds.size > 1) fail('backdrops ' + [...bds].join(','), sd * 53)
+    secs.forEach((n, i) => { if (i && n.props.bg && n.props.bg === secs[i - 1].props.bg) fail(`adjacent fill ${n.props.bg} (${n.props.build})`, sd * 53) })
+    const icons = new Set<string>(); walk(d.root, (n) => { if (n.type === 'image' && n.props.icon) icons.add(String(n.props.shape)) })
+    if (icons.size > 1) fail('mixed icon shapes', sd * 53)
+  }
+  if (bad) { console.log(bad + ' coherence failures'); process.exit(1) }
+  console.log('coherence ok')
+}
+
 // export-for-AI: pattern library is structure-only (no sample copy) and the prompt stays chat-sized
 import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
 {
@@ -155,7 +182,7 @@ import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
     const real = kind === 'marketing' ? d.meta.name : d.meta.name
     if (!ds.patterns.length || !ds.pages.length || blob.includes(real)) { console.log('FAIL export patterns', kind); process.exit(1) }
     const kb = designSystemPrompt(d).length / 1024
-    if (kb > 60) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
+    if (kb > 80) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
   }
   console.log('export for AI ok')
 }

@@ -13,6 +13,7 @@ specimen page with lorem ipsum text; the real output is the design system JSON /
 * `src/render` – tree → React components + one doc stylesheet shared by canvas and export (CSS variables, clamp()/cqw, @container).
 * `src/editor` – canvas, drag & drop, layers, inspector, generate/critique panels.
 * `src/gen/fonts.ts` + `googleFonts.json` – any free Google font: the seed picks two (curated pairings or rule-based ones from ~1,200 families); you can type your own two with autocomplete. Refresh the list with `node scripts/gen-fonts.mjs`.
+* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Motion (hover, load and scroll reveals, animated backdrops) follows the design's `motion` token.
 * `src/designSystem.ts` – the export: tokens, rules, components, a section-pattern library and page recipes.
 
 ## Desktop app (Electron)

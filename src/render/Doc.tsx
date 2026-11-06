@@ -1,8 +1,9 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { DNode, Props, Tokens } from '../types'
 import { Art, type ArtKind } from './art'
 import { tokenVars } from './css'
 import { placeholdUrl } from './placehold'
+import { initReveal } from './reveal'
 
 export { placeholdUrl }
 
@@ -70,14 +71,14 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
     case 'page':
       return <Kids n={n} />
     case 'section': {
-      const a = useAttrs(n, 'd-sec', { 'data-bg': p.bg, 'data-pad': p.pad === 'none' ? 'none' : undefined, 'data-align': p.align, 'data-width': p.width, ...bdAttrs(p) }, { '--pad': PAD[p.pad ?? 'm'], '--gap': p.gap, ...bdStyle(p), ...(p.sw ? { '--sw': `${p.sw}px` } : {}) } as CSSProperties)
+      const a = useAttrs(n, 'd-sec', { 'data-bg': p.bg, 'data-pad': p.pad === 'none' ? 'none' : undefined, 'data-align': p.align, 'data-width': p.width, 'data-role': p.role, ...bdAttrs(p) }, { '--pad': PAD[p.pad ?? 'm'], '--gap': p.gap, ...bdStyle(p), ...(p.sw ? { '--sw': `${p.sw}px` } : {}) } as CSSProperties)
       return <section {...a}><BackdropLayer p={p} tokens={ctx.tokens} /><div className="d-inner"><Kids n={n} /></div></section>
     }
     case 'box': {
       const dir = p.dir ?? 'col'
       const a = useAttrs(n, 'd-box', {
         'data-dir': dir, 'data-align': p.align, 'data-justify': p.justify, 'data-bg': p.bg, 'data-variant': p.variant,
-        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined, ...bdAttrs(p),
+        'data-pad': p.pad ? 'y' : undefined, 'data-keep': p.keep ? 'true' : undefined, 'data-btns': p.btns ? 'true' : undefined, 'data-sticky': p.sticky ? 'true' : undefined, 'data-full': p.full ? 'true' : undefined, ...bdAttrs(p),
       }, { '--tpl': tpl(p.cols), '--gap': p.gap, '--bpad': p.pad, '--ai': p.valign, ...bdStyle(p) } as CSSProperties)
       return <div {...a}><BackdropLayer p={p} tokens={ctx.tokens} /><Kids n={n} /></div>
     }
@@ -87,7 +88,7 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
       return <Tag {...a} {...ed(ctx, 'text')}>{p.text}</Tag>
     }
     case 'text': {
-      const a = useAttrs(n, 'd-text', { 'data-size': p.size ?? 'm', 'data-muted': p.muted ? 'true' : undefined }, { textAlign: p.align, ...(p.align === 'center' ? { marginInline: 'auto' } : {}) })
+      const a = useAttrs(n, 'd-text', { 'data-size': p.size ?? 'm', 'data-muted': p.muted ? 'true' : undefined, 'data-label': p.label ? 'true' : undefined }, { textAlign: p.align, ...(p.align === 'center' ? { marginInline: 'auto' } : {}) })
       return <p {...a} {...ed(ctx, 'text')}>{p.text}</p>
     }
     case 'button': {
@@ -95,7 +96,7 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
       return <a {...a} href="#" onClick={(e) => e.preventDefault()}><span {...ed(ctx, 'label')}>{p.label}</span>{p.arrow ? <span aria-hidden="true">→</span> : null}</a>
     }
     case 'image': {
-      const a = useAttrs(n, 'd-img', { 'data-shape': p.shape }, { '--ratio': String(p.ratio ?? '4/3') })
+      const a = useAttrs(n, 'd-img', { 'data-shape': p.shape, 'data-frame': p.frame, 'data-icon': p.icon ? 'true' : undefined }, { '--ratio': String(p.ratio ?? '4/3') })
       return (
         <figure {...a}>
           {p.source === 'placehold' ? (
@@ -166,6 +167,21 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
       const track = (hide: boolean) => <span className="d-marquee-track" aria-hidden={hide || undefined}>{[0, 1].map((k) => items.map((t, i) => <span key={k + '-' + i}>{t}</span>))}</span>
       return <div {...a}>{track(false)}{track(true)}</div>
     }
+    case 'logos': {
+      const a = useAttrs(n, 'd-logos', {})
+      return <ul {...a}>{lines(p.items).map((l, i) => <li key={i}>{l}</li>)}</ul>
+    }
+    case 'faq': {
+      const a = useAttrs(n, 'd-faq', {})
+      return (
+        <div {...a}>
+          {lines(p.items).map((it, i) => {
+            const [q, ...rest] = String(it).split('|')
+            return <details key={i} open={i === 0 && p.open !== false}><summary>{q.trim()}</summary><div className="d-faq-a">{rest.join('|').trim()}</div></details>
+          })}
+        </div>
+      )
+    }
     case 'quote': {
       const a = useAttrs(n, 'd-quote', { 'data-size': p.size, 'data-mark': p.mark ? 'true' : undefined }, { textAlign: p.align })
       return <figure {...a}><blockquote {...ed(ctx, 'text')}>{p.text}</blockquote>{p.who ? <cite {...ed(ctx, 'who')}>{p.who}</cite> : null}</figure>
@@ -173,10 +189,12 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
   }
 }
 
-export function DocView({ root, tokens, ctx = { editor: false }, wire = false }: { root: DNode; tokens: Tokens; ctx?: RenderCtx; wire?: boolean }) {
+export function DocView({ root, tokens, ctx = { editor: false }, wire = false, still = false }: { root: DNode; tokens: Tokens; ctx?: RenderCtx; wire?: boolean; still?: boolean }) {
+  const frame = useRef<HTMLDivElement>(null)
+  useEffect(() => (still ? undefined : initReveal(frame.current)), [root, still])
   return (
     <Ctx.Provider value={{ ...ctx, tokens }}>
-      <div className={'d-frame' + (wire ? ' wire' : '')}>
+      <div ref={frame} className={'d-frame' + (wire ? ' wire' : '') + (still ? ' still' : '')}>
         <div className="d-doc" data-sig={tokens.signature} style={tokenVars(tokens) as CSSProperties}>
           <NodeView n={root} />
         </div>

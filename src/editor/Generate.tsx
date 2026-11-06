@@ -98,7 +98,7 @@ export function Generate() {
               const name = archetypesFor(v.meta.kind).find((a) => a.id === v.meta.archetype)?.name
               return (
                 <button key={i} className="variant" onClick={() => pickVariant(v)} title={`${name} · seed ${designCode(v)}`}>
-                  <div className="thumb"><div style={{ width: 1280, transform: 'scale(0.125)', transformOrigin: 'top left', pointerEvents: 'none' }}><DocView root={v.root} tokens={v.tokens} /></div></div>
+                  <div className="thumb"><div style={{ width: 1280, transform: 'scale(0.125)', transformOrigin: 'top left', pointerEvents: 'none' }}><DocView root={v.root} tokens={v.tokens} still /></div></div>
                   <span>{name}</span>
                 </button>
               )

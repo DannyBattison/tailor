@@ -6,7 +6,7 @@ import { contrast, hexToOklch } from './lib/color'
 import { placeholdColors, placeholdUrl } from './render/placehold'
 import { walk } from './lib/tree'
 import { makeRng } from './lib/rng'
-import { SECTIONS, type Ctx } from './gen/build'
+import { SECTIONS, planFor, type Ctx } from './gen/build'
 import { PLACEHOLDER_APP, PLACEHOLDER_MARKETING } from './gen/content'
 import type { DNode, Doc } from './types'
 
@@ -55,6 +55,12 @@ const PATTERN_NOTES: Record<string, string> = {
   'quote.pair': 'Two quotes: one ruled, one outlined.',
   'cta.band': 'Filled band: closing line and button on one row.',
   'cta.split': 'Oversized closing line over a two-column lead and actions.',
+  'logos.strip': 'Small label and a row of wordmark logos, muted until hovered. Sits directly under the hero as social proof.',
+  'features.cards': 'Centred or left intro, then a three-column grid of cards each led by a small art icon.',
+  'steps.row': 'How it works: heading and lead, then three numbered steps, ruled or boxed.',
+  'pricing.cards': 'Three plan cards (name, price, blurb, check list, button); the middle one is filled and carries a badge.',
+  'faq.list': 'Accordion of questions with plus/cross toggles, beside a sticky intro or centred in a narrow column. First item open.',
+  'footer.cols': 'Brand, address and email signup beside three link columns; hairline; copyright and legal links.',
   'index.list': 'Sticky heading beside a large ruled index list.',
   'index.table': 'Heading beside a striped data table.',
   'marquee.band': 'Full-bleed scrolling text band.',
@@ -71,20 +77,20 @@ function patternLibrary(doc: Doc) {
   const cont = { c: PLACEHOLDER_MARKETING, a: PLACEHOLDER_APP }
   const wanted = Object.keys(SECTIONS).filter((k) => (doc.meta.kind === 'app' ? k.startsWith('app.') || k.startsWith('nav.') : !k.startsWith('app.')))
   return wanted.map((key) => {
-    const x: Ctx = { rng: makeRng(doc.meta.layoutSeed + key.length * 131), t: doc.tokens, ...cont }
+    const x: Ctx = { plan: planFor(doc.meta.layoutSeed), rng: makeRng(doc.meta.layoutSeed + key.length * 131), t: doc.tokens, ...cont }
     const tree = SECTIONS[key](x)
-    return { key, use: PATTERN_NOTES[key] ?? '', structure: outline(tree, 0, 4) }
+    return { key, use: PATTERN_NOTES[key] ?? '', structure: outline(tree, 0, 3) }
   })
 }
 
 const MARKETING_PAGES = [
-  { page: 'Home', sections: ['nav', 'hero.*', 'features.*', 'stats.*', 'quote.*', 'cta.*', 'footer.simple'] },
-  { page: 'About', sections: ['nav', 'hero.stack|hero.dense', 'features.alt|features.numbered', 'quote.side|quote.pair', 'stats.row', 'cta.band', 'footer.simple'] },
-  { page: 'Pricing', sections: ['nav', 'hero.dense', 'features.uneven (plans)', 'index.table (comparison)', 'quote.pair', 'cta.band', 'footer.simple'] },
-  { page: 'Services / Features', sections: ['nav', 'hero.stack', 'features.bento|features.twocol', 'features.alt', 'cta.split', 'footer.simple'] },
-  { page: 'Blog / Journal index', sections: ['nav', 'hero.dense', 'index.list (posts)', 'footer.simple'] },
-  { page: 'Article', sections: ['nav', 'hero.dense (title, date)', 'quote.side', 'cta.band', 'footer.simple'] },
-  { page: 'Contact', sections: ['nav', 'hero.dense', 'features.twocol (ways to reach us)', 'index.table (opening hours)', 'footer.simple'] },
+  { page: 'Home', sections: ['nav', 'hero.*', 'logos.strip', 'features.*', 'steps.row', 'stats.*', 'quote.*', 'pricing.cards', 'faq.list', 'cta.*', 'footer.cols'] },
+  { page: 'About', sections: ['nav', 'hero.stack|hero.dense', 'features.alt|features.numbered', 'quote.side|quote.pair', 'stats.row', 'cta.band', 'footer.cols'] },
+  { page: 'Pricing', sections: ['nav', 'hero.dense', 'pricing.cards', 'index.table (comparison)', 'faq.list', 'cta.band', 'footer.cols'] },
+  { page: 'Services / Features', sections: ['nav', 'hero.stack', 'features.bento|features.twocol', 'features.alt', 'cta.split', 'footer.cols'] },
+  { page: 'Blog / Journal index', sections: ['nav', 'hero.dense', 'index.list (posts)', 'footer.cols'] },
+  { page: 'Article', sections: ['nav', 'hero.dense (title, date)', 'quote.side', 'cta.band', 'footer.cols'] },
+  { page: 'Contact', sections: ['nav', 'hero.dense', 'features.twocol (ways to reach us)', 'index.table (opening hours)', 'footer.cols'] },
 ]
 const APP_PAGES = [
   { page: 'Overview', sections: ['app.topbar', 'app.kpis|app.kpis2', 'app.table'] },
@@ -142,6 +148,15 @@ export function designSystem(doc: Doc) {
       shadow: t.shadow === 'hard' ? { kind: 'hard', css: tokenVars(t)['--shadow'] } : { kind: t.shadow, css: tokenVars(t)['--shadow'] },
       density: t.density, spacingUnit: tokenVars(t)['--space'],
     },
+    motion: {
+      style: t.motion ?? 'smooth', easing: tokenVars(t)['--ease'], duration: tokenVars(t)['--dur'],
+      rules: [
+        'Every interactive element transitions (buttons lift and press, cards rise with a larger shadow, nav links underline, list titles slide, images zoom slowly, table rows tint).',
+        'The hero plays in on load, staggered; later sections rise and fade in as they scroll into view (scroll-driven animation, no JS).',
+        'Backdrops move: aurora blobs and washes drift, grids and dots pan, art floats. All are slow (20s+), low contrast and sit behind content.',
+        'Animate only transform, translate, opacity and background-position. Always honour prefers-reduced-motion.',
+      ],
+    },
     signature: { name: t.signature, rule: SIGNATURES[t.signature] },
     layout: {
       archetype: doc.meta.archetype,
@@ -161,9 +176,11 @@ export function designSystem(doc: Doc) {
       tag: { variants: ['accent2 (default)', 'solid', 'plain', 'accent'], style: 'mono, uppercase, 0.08em tracking' },
       card: { variants: ['card (border + shadow)', 'outline', 'rule-top', 'rule-left'], radius: `${Math.min(t.radius, 22)}px (large boxes never go fully round)` },
       input: { variants: ['text', 'textarea', 'select', 'toggle'], style: 'mono uppercase label above a bordered control' },
-      list: { variants: ['ruled', 'index', 'numbered', 'bullets'] },
+      list: { variants: ['ruled', 'index', 'numbered', 'bullets', 'links', 'checks'] },
+      faq: { style: 'details/summary accordion, display-font questions, plus icon rotating to a cross' },
+      logos: { style: 'wordmarks with a small geometric glyph, muted until hover' },
       table: { options: ['zebra'], style: 'mono uppercase header with a heavy rule under it' },
-      backdrops: { options: ['none', 'grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo'], rule: 'Backdrops are quiet texture or colour fields behind heroes, bands and a single tile; never behind dense text.' },
+      backdrops: { options: ['none', 'grid', 'dots', 'hatch', 'wash', 'aurora', 'split', 'noise', 'art', 'photo'], rule: 'Backdrops are quiet texture or colour fields behind heroes, bands and a single tile; never behind dense text.' },
     },
     cssVariables: tokenVars(t),
     rules: [
@@ -171,7 +188,7 @@ export function designSystem(doc: Doc) {
       'Use only the listed fonts; never fall back to Inter, Roboto, Arial or system-ui as a design choice.',
       `Corner radius is ${t.radius >= 40 ? 'pill' : t.radius + 'px'} everywhere; borders are ${t.border}px; shadow is ${t.shadow}.`,
       'Keep text contrast at or above the ratios listed; use accentText, not accent, for coloured text.',
-      'Do not build three identical cards in equal columns. Vary width, fill, or content.',
+      'Do not build three identical cards in equal columns (pricing is the one exception, and even there the middle plan is filled). Vary width, fill, or content.',
       'Do not centre everything; left-align most copy and centre sparingly.',
       'No emoji as icons. Copy is specific and concrete, with no stock phrases ("unlock the power of", "seamless").',
       `Commit to the signature move: ${SIGNATURES[t.signature]}`,
@@ -181,7 +198,7 @@ export function designSystem(doc: Doc) {
 }
 
 /** Prompt copy: same data, with the stylesheet minified so it fits comfortably in a chat. */
-const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
+const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.split('\n').filter((l) => !/\.d-frame\.(wire|still)/.test(l)).join('\n').replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
 
 export function designSystemPrompt(doc: Doc): string {
   return `You are building a complete multi-page ${doc.meta.kind === 'app' ? 'app UI' : 'website'} for a project that already has a design system. Below is that system as JSON. It is a design system, not a page: any copy in it is placeholder, so write the real copy for the project yourself.

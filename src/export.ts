@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { fontSpec, fontsUrl } from './gen/fonts'
 import { DOC_CSS } from './render/css'
 import { DocView } from './render/Doc'
+import { revealScript } from './render/reveal'
 import type { Doc } from './types'
 
 /** Standalone HTML: the same React components, the same stylesheet, rendered to a string. */
@@ -24,6 +25,7 @@ ${DOC_CSS}
 </head>
 <body>
 ${body}
+${revealScript()}
 </body>
 </html>
 `
