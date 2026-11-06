@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { fontKey, fontSpec, fontsUrl, loadFont } from '../gen/fonts'
-import { cloneFresh, find, insertNode, moveNode, updateProps } from '../lib/tree'
+import { cloneFresh, find, moveNode, updateProps } from '../lib/tree'
 import { DOC_CSS } from '../render/css'
 import { DocView } from '../render/Doc'
 import { mutate, setUI, useStore, type Viewport } from '../store'
 import { drag, dropFor, type DropTarget } from './dnd'
-import { ELEMENTS } from './schema'
 
 export const VIEWPORT_W: Record<Viewport, number> = { desktop: 1280, tablet: 820, mobile: 390 }
 
@@ -107,13 +106,11 @@ export function Canvas() {
   function onDragOver(e: React.DragEvent) {
     if (!drag.current) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = drag.current.kind === 'move' ? 'move' : 'copy'
+    e.dataTransfer.dropEffect = 'move'
     const d = dropFor(doc.root, stageRef.current!, e)
     if (!d) { setDrop(null); return }
-    if (drag.current.kind === 'move') {
-      const moving = find(doc.root, drag.current.id)
-      if (moving && find(moving, d.id)) { setDrop(null); return }
-    }
+    const moving = find(doc.root, drag.current.id)
+    if (moving && find(moving, d.id)) { setDrop(null); return }
     const b = boxOf(stageRef.current!.querySelector(`[data-id="${d.id}"]`))
     if (!b) { setDrop(null); return }
     setDrop((p) => (p && p.id === d.id && p.pos === d.pos && p.box.x === b.x && p.box.y === b.y ? p : { ...d, box: b }))
@@ -126,22 +123,7 @@ export function Canvas() {
     drag.current = null
     setDrop(null)
     if (!d || !dr) return
-    if (dr.kind === 'move') {
-      mutate((doc0) => ({ ...doc0, root: moveNode(doc0.root, dr.id, d.id, d.pos) }), 'move')
-    } else {
-      const el = ELEMENTS.find((x) => x.type === dr.type)
-      if (!el) return
-      const node = el.make()
-      mutate((doc0) => {
-        const target = find(doc0.root, d.id)
-        if (!target) return doc0
-        if (d.pos === 'inside') return { ...doc0, root: insertNode(doc0.root, target.id, target.children.length, node) }
-        const parent = findParentOf(doc0.root, target.id)
-        if (!parent) return doc0
-        return { ...doc0, root: insertNode(doc0.root, parent.id, parent.children.findIndex((c) => c.id === target.id) + (d.pos === 'after' ? 1 : 0), node) }
-      })
-      setUI({ selectedId: node.id })
-    }
+    mutate((doc0) => ({ ...doc0, root: moveNode(doc0.root, dr.id, d.id, d.pos) }), 'move')
   }
 
   return (

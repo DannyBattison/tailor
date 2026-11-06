@@ -49,15 +49,7 @@ em{font-style:normal;color:var(--c-mute);font-weight:400}
 .variant:hover{box-shadow:3px 3px 0 var(--c-ink)}
 .variant span{padding:3px 6px;font-size:11px;border-top:1px solid var(--c-ink)}
 .thumb{height:118px;width:100%;overflow:hidden;position:relative;background:#fff}
-.elements,.chips{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.chips{grid-template-columns:repeat(4,1fr)}.chips button{padding:3px 2px;font-size:11px}
-.el{cursor:grab;text-align:left}
-.layers{padding:6px 0;gap:0}
-.layer{display:flex;gap:4px;padding:3px 6px;cursor:pointer;white-space:nowrap;border-top:2px solid transparent;border-bottom:2px solid transparent}
-.layer:hover{background:#fff}.layer.sel{background:var(--c-ink);color:#fff}
-.layer.over-before{border-top-color:var(--c-hot)}.layer.over-after{border-bottom-color:var(--c-hot)}.layer.over-inside{outline:2px solid var(--c-hot);outline-offset:-2px}
-.twisty{width:10px;color:var(--c-mute)}
-.ltype{overflow:hidden;text-overflow:ellipsis}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.chips button{padding:3px 2px;font-size:11px}
 .field{display:flex;flex-direction:column;gap:2px}.field.inline{flex-direction:row;align-items:center;justify-content:space-between}
 .field label{font-size:11.5px;color:var(--c-mute)}
 .field input[type=checkbox]{width:auto}

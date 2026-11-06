@@ -5,7 +5,6 @@ import { CritiquePanel } from './editor/CritiquePanel'
 import { Design } from './editor/Design'
 import { Generate } from './editor/Generate'
 import { Inspector } from './editor/Inspector'
-import { Elements, Layers } from './editor/Layers'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
 import { designSystem, designSystemPrompt } from './designSystem'
@@ -89,12 +88,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const tabs: [typeof ui.leftTab, string][] = [['generate', 'Generate'], ['elements', 'Add'], ['layers', 'Layers'], ['critique', 'Critique']]
+  const tabs: [typeof ui.leftTab, string][] = [['generate', 'Generate'], ['critique', 'Critique']]
   return (
     <div className={'app' + (ui.drawer ? ' drawer-' + ui.drawer : '')}>
       <TopBar />
       <button className="fab fab-left" aria-expanded={ui.drawer === 'left'} aria-controls="left-drawer" onClick={() => setUI({ drawer: ui.drawer === 'left' ? '' : 'left' })}>
-        <span aria-hidden>{ui.drawer === 'left' ? '✕' : '☰'}</span> {ui.drawer === 'left' ? 'Close' : 'Build'}
+        <span aria-hidden>{ui.drawer === 'left' ? '✕' : '☰'}</span> {ui.drawer === 'left' ? 'Close' : 'Generate'}
       </button>
       <button className="fab fab-right" aria-expanded={ui.drawer === 'right'} aria-controls="right-drawer" onClick={() => setUI({ drawer: ui.drawer === 'right' ? '' : 'right' })}>
         <span aria-hidden>{ui.drawer === 'right' ? '✕' : '⚙'}</span> {ui.drawer === 'right' ? 'Close' : 'Style'}
@@ -104,8 +103,6 @@ export default function App() {
         <nav className="tabs">{tabs.map(([k, l]) => <button key={k} className={ui.leftTab === k ? 'on' : ''} onClick={() => setUI({ leftTab: k })}>{l}</button>)}</nav>
         <div className="scroll">
           {ui.leftTab === 'generate' && <Generate />}
-          {ui.leftTab === 'elements' && <Elements />}
-          {ui.leftTab === 'layers' && <Layers />}
           {ui.leftTab === 'critique' && <CritiquePanel />}
         </div>
       </aside>

@@ -1,7 +1,7 @@
 import { find, findParent, isContainer, type DropPos } from '../lib/tree'
 import type { DNode } from '../types'
 
-export type Dragging = { kind: 'move'; id: string } | { kind: 'new'; type: string } | null
+export type Dragging = { kind: 'move'; id: string } | null
 export const drag: { current: Dragging } = { current: null }
 
 export interface DropTarget { id: string; pos: DropPos }
@@ -19,7 +19,7 @@ export function dropFor(root: DNode, stage: HTMLElement, e: { clientX: number; c
   const id = el.dataset.id!
   const node = find(root, id)
   if (!node) return null
-  if (drag.current?.kind === 'move' && drag.current.id === id) return null
+  if (drag.current?.id === id) return null
   const loc = findParent(root, id)
   const rect = el.getBoundingClientRect()
   if (node.type === 'page') return { id, pos: 'inside' }

@@ -8,7 +8,7 @@ export interface UI {
   selectedId: string | null
   wire: boolean
   viewport: Viewport
-  leftTab: 'generate' | 'elements' | 'layers' | 'critique'
+  leftTab: 'generate' | 'critique'
   rightTab: 'node' | 'design'
   kind: Kind
   mood: string
@@ -38,6 +38,7 @@ function load(): State {
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
     if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', drawer: '', codeInput: null })
+    if (ui.leftTab !== 'critique') ui.leftTab = 'generate' // saved by a build that still had the Add and Layers tabs
     localStorage.removeItem('hm.key') // earlier builds could store an API key here; there is no AI integration any more
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
     if (d?.root && d.tokens) return { doc: d, past: [], future: [], ui }
