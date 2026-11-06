@@ -195,7 +195,7 @@ export function DocView({ root, tokens, ctx = { editor: false }, wire = false, s
   return (
     <Ctx.Provider value={{ ...ctx, tokens }}>
       <div ref={frame} className={'d-frame' + (wire ? ' wire' : '') + (still ? ' still' : '')}>
-        <div className="d-doc" data-sig={tokens.signature} style={tokenVars(tokens) as CSSProperties}>
+        <div className="d-doc" data-sig={tokens.signature} data-bgm={tokens.ambient ?? 'drift'} style={tokenVars(tokens) as CSSProperties}>
           <NodeView n={root} />
         </div>
       </div>

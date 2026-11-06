@@ -1,5 +1,5 @@
 import { fontSpec, fontStacks } from '../gen/fonts'
-import type { Tokens } from '../types'
+import type { AmbientMotion, EntranceMotion, Tokens } from '../types'
 
 /** Token → CSS custom properties (set inline on the doc root, so many docs can coexist). */
 /** Fluid size for scale step n: clamp(min, a + b·cqw, max). Reaches `max` at a 1280px container and `min` at 390px. */
@@ -18,6 +18,44 @@ const MOTION = {
   springy: { ease: 'cubic-bezier(.34,1.56,.64,1)', dur: '.55s', lift: 6 },
 }
 
+/** Background animation: a time multiplier and timing over the base keyframes. `breathe` also swaps the keyframes (see DOC_CSS). */
+const AMBIENT: Record<AmbientMotion, { t: number; fn: string; pan: string; play: string; marquee: string }> = {
+  still: { t: 1, fn: 'ease-in-out', pan: 'linear', play: 'paused', marquee: '36s' },
+  drift: { t: 1, fn: 'ease-in-out', pan: 'linear', play: 'running', marquee: '28s' },
+  breathe: { t: 1, fn: 'ease-in-out', pan: 'linear', play: 'running', marquee: '28s' },
+  sweep: { t: 0.3, fn: 'ease-in-out', pan: 'linear', play: 'running', marquee: '14s' },
+  stutter: { t: 0.7, fn: 'steps(9)', pan: 'steps(9)', play: 'running', marquee: '20s' },
+}
+
+/** Entrance: where an element starts from, read by the one d-in keyframe. */
+const ENTRANCE: Record<EntranceMotion, { o: number; move?: string; scale?: string; clip?: [string, string]; dur: string; gap: number }> = {
+  none: { o: 1, dur: '0s', gap: 0 },
+  rise: { o: 0, move: '0 30px', dur: '1s', gap: 1 },
+  fade: { o: 0, dur: '1.1s', gap: 1 },
+  zoom: { o: 0, scale: '.93', dur: '.8s', gap: 0.7 },
+  slide: { o: 0, move: '-40px 0', dur: '.7s', gap: 0.6 },
+  wipe: { o: 1, clip: ['inset(-20% -20% 100% -20%)', 'inset(-20%)'], dur: '.9s', gap: 1.2 },
+}
+
+/** Interaction: what hovering does, on top of the timing in MOTION. */
+function hoverVars(t: Tokens, liftPx: number, shadow: string) {
+  const hard = t.shadow === 'hard'
+  const off = Math.max(4, t.border * 2.5)
+  const half = Math.round(off / 2)
+  const lift = hard ? '-3px -3px' : `0 -${liftPx}px`
+  const raised = hard ? `${off + 3}px ${off + 3}px 0 var(--ink)` : t.shadow === 'soft' ? '0 18px 38px -12px color-mix(in oklab, var(--ink) 42%, transparent)' : '0 16px 30px -16px color-mix(in oklab, var(--ink) 30%, transparent)'
+  const ring = '0 0 0 3px color-mix(in oklab, var(--accent) 55%, var(--ink)), 0 0 34px -4px color-mix(in oklab, var(--accent) 70%, transparent)'
+  const base = { lift, raised, s: '1', sl: '1', r: '0deg', rl: '0deg', img: '1.07', nudge: '.35em', nudgeY: '-2px' }
+  const v = {
+    lift: base,
+    sink: { ...base, lift: hard ? `${half}px ${half}px` : '0 2px', raised: hard ? `${off - half}px ${off - half}px 0 var(--ink)` : t.shadow === 'soft' ? '0 4px 12px -6px color-mix(in oklab, var(--ink) 45%, transparent)' : 'none', img: '1.03', nudge: '.2em', nudgeY: '2px' },
+    grow: { ...base, lift: '0 0', s: '1.05', sl: '1.015', img: '1.12', nudge: '0', nudgeY: '0' },
+    tilt: { ...base, r: '-1.6deg', rl: '-.5deg' },
+    glow: { ...base, lift: '0 0', raised: shadow === 'none' ? ring : `${shadow}, ${ring}`, img: '1.03', nudge: '0', nudgeY: '0' },
+  }[t.hover ?? 'lift']
+  return { '--lift': v.lift, '--shadow-h': v.raised, '--hover-s': v.s, '--hover-sl': v.sl, '--hover-r': v.r, '--hover-rl': v.rl, '--hover-img': v.img, '--nudge': v.nudge, '--nudge-y': v.nudgeY }
+}
+
 export function tokenVars(t: Tokens): Record<string, string> {
   const spec = fontSpec(t)
   const f = fontStacks(spec)
@@ -27,11 +65,14 @@ export function tokenVars(t: Tokens): Record<string, string> {
   const m = MOTION[t.motion ?? 'smooth']
   const hard = t.shadow === 'hard'
   const off = Math.max(4, t.border * 2.5)
+  const bg = AMBIENT[t.ambient ?? 'drift']
+  const inn = ENTRANCE[t.entrance ?? 'rise']
   return {
     '--ease': m.ease, '--dur': m.dur,
-    // hover lift: hard shadows move the element up-left while the shadow grows; others float up
-    '--lift': hard ? '-3px -3px' : `0 -${m.lift}px`,
-    '--shadow-h': hard ? `${off + 3}px ${off + 3}px 0 var(--ink)` : t.shadow === 'soft' ? '0 18px 38px -12px color-mix(in oklab, var(--ink) 42%, transparent)' : '0 16px 30px -16px color-mix(in oklab, var(--ink) 30%, transparent)',
+    ...hoverVars(t, m.lift, shadow),
+    '--bgm-t': String(bg.t), '--bgm-loop': `${bg.fn} infinite alternate ${bg.play}`, '--bgm-pan': `${bg.pan} infinite ${bg.play}`, '--bgm-marquee': bg.marquee,
+    '--in-o': String(inn.o), '--in-move': inn.move ?? 'none', '--in-scale': inn.scale ?? 'none', '--in-clip': inn.clip?.[0] ?? 'none', '--in-clip-to': inn.clip?.[1] ?? 'none',
+    '--in-dur': inn.dur, '--in-gap': String(inn.gap), '--rv-hide': inn.dur === '0s' ? '1' : '0',
     '--shadow-float': hard ? `${off}px ${off}px 0 var(--ink)` : '0 34px 60px -28px color-mix(in oklab, var(--ink) 55%, transparent)',
     '--press': hard ? `${off - 1}px ${off - 1}px` : '0 1px',
     '--press-shadow': hard ? '0 0 0 var(--ink)' : shadow,
@@ -158,7 +199,7 @@ export const DOC_CSS = `
 .d-marquee{overflow:hidden;white-space:nowrap;border-block:max(1.5px,var(--bw)) solid var(--ink);background:var(--accent);color:var(--on-accent);font-family:var(--f-display);font-weight:var(--w-display);font-size:var(--fs-2);text-transform:var(--case);padding-block:.3em;margin-inline:calc(var(--space) * -1.2)}
 .d-marquee[data-bg=ink]{background:var(--ink);color:var(--bg)}
 .d-marquee[data-bg=accent2]{background:var(--accent2);color:var(--ink)}
-.d-marquee-track{display:inline-flex;gap:1.5em;padding-right:1.5em;animation:d-slide 28s linear infinite}
+.d-marquee-track{display:inline-flex;gap:1.5em;padding-right:1.5em;animation:d-slide var(--bgm-marquee) linear infinite}
 .d-marquee-track span::after{content:'\\2726';margin-left:1.5em;font-family:sans-serif}
 @keyframes d-slide{to{transform:translateX(-50%)}}
 .d-sec>.d-inner>.d-marquee,.d-sec .d-marquee{margin-inline:calc(var(--space) * -1.2)}
@@ -173,11 +214,11 @@ export const DOC_CSS = `
 .d-sec[data-backdrop],.d-box[data-backdrop]{overflow:hidden;overflow:clip}
 .d-sec[data-backdrop]>.d-inner{position:relative;z-index:1}
 .d-box[data-backdrop]>*:not(.d-bd){position:relative;z-index:1}
-[data-backdrop=grid]::before{content:'';position:absolute;inset:-44px;pointer-events:none;z-index:0;background-image:linear-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px);background-size:44px 44px;background-position:43px 43px;animation:d-pan-grid 40s linear infinite}
-[data-backdrop=dots]::before{content:'';position:absolute;inset:-20px;pointer-events:none;z-index:0;background-image:radial-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 16%),transparent) 1.4px,transparent 1.7px);background-size:20px 20px;animation:d-pan-dots 24s linear infinite}
-[data-backdrop=hatch]{background-image:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 6%),transparent) 9px 10px)}
-[data-backdrop=split]{background-image:linear-gradient(to right,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
-[data-backdrop=split][data-bdside=right]{background-image:linear-gradient(to left,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
+[data-backdrop=grid]::before{content:'';position:absolute;inset:-44px;pointer-events:none;z-index:0;background-image:linear-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px);background-size:44px 44px;background-position:43px 43px;animation:d-pan-grid calc(40s * var(--bgm-t)) var(--bgm-pan)}
+[data-backdrop=dots]::before{content:'';position:absolute;inset:-20px;pointer-events:none;z-index:0;background-image:radial-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 16%),transparent) 1.4px,transparent 1.7px);background-size:20px 20px;animation:d-pan-dots calc(24s * var(--bgm-t)) var(--bgm-pan)}
+[data-backdrop=hatch]::before{content:'';position:absolute;inset:-20px;pointer-events:none;z-index:0;background-image:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 6%),transparent) 9px 10px);animation:d-pan-hatch calc(30s * var(--bgm-t)) var(--bgm-pan)}
+[data-backdrop=split]::before{content:'';position:absolute;inset:0 auto 0 0;width:34%;pointer-events:none;z-index:0;transform-origin:left;background:color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent);animation:d-split calc(22s * var(--bgm-t)) var(--bgm-loop)}
+[data-backdrop=split][data-bdside=right]::before{inset:0 0 0 auto;transform-origin:right}
 [data-backdrop=noise]{background-image:${GRAIN};background-blend-mode:multiply}
 .d-bd{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:calc(var(--bd-s) * .14)}
 .d-bd .d-art,.d-bd img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
@@ -210,7 +251,7 @@ export const DOC_CSS = `
 .d-logos li:nth-child(6n)::before{background:none;border:.22em solid currentColor;border-radius:50%}
 .d-logos li:nth-child(3n+2){font-family:var(--f-body);font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:var(--fs-m)}
 .d-logos li:nth-child(3n){font-style:italic}
-.d-logos li:hover{opacity:1;translate:0 -2px}
+.d-logos li:hover{opacity:1;translate:0 var(--nudge-y)}
 .d-faq{display:flex;flex-direction:column;border-top:max(1px,var(--bw)) solid var(--ink);width:100%;interpolate-size:allow-keywords}
 .d-faq details{border-bottom:max(1px,var(--bw)) solid var(--ink)}
 .d-faq summary{display:flex;align-items:center;justify-content:space-between;gap:1.2em;cursor:pointer;list-style:none;padding-block:calc(1em * var(--d));font-family:var(--f-display);font-weight:var(--w-display);font-size:var(--fs-l);letter-spacing:var(--track);line-height:1.2;transition:color .25s}
@@ -230,7 +271,7 @@ export const DOC_CSS = `
 .d-text[data-label=true]{font:600 var(--fs-s)/1.2 var(--f-mono);text-transform:uppercase;letter-spacing:.08em}
 .d-list[data-variant=links] li{justify-content:flex-start;padding-block:.22em}
 .d-list[data-variant=links] .d-li-title{font-weight:400;color:var(--muted);display:inline-block;transition:color .2s,translate .35s var(--ease)}
-.d-list[data-variant=links] li:hover .d-li-title{color:var(--ink);translate:.3em 0}
+.d-list[data-variant=links] li:hover .d-li-title{color:var(--ink);translate:var(--nudge) 0}
 .d-list[data-variant=links] .d-li-meta{display:none}
 .d-list[data-variant=checks] li{justify-content:flex-start;gap:.7em;padding-block:.3em;align-items:center}
 .d-list[data-variant=checks] li::before{content:'';flex:none;width:.6em;height:.32em;border-left:2px solid var(--accent-text);border-bottom:2px solid var(--accent-text);rotate:-45deg;translate:0 -.1em}
@@ -241,9 +282,9 @@ export const DOC_CSS = `
 .d-box[data-variant=card]>.d-btn:last-child{margin-top:auto}
 .d-box[data-variant=card]>.d-btn{justify-content:center}
 /* motion: transitions on everything interactive, ease and duration come from the design's motion token */
-.d-btn{transition:translate var(--dur) var(--ease),box-shadow var(--dur) var(--ease),background-color .25s,color .25s,border-color .25s}
+.d-btn{transition:translate var(--dur) var(--ease),scale var(--dur) var(--ease),rotate var(--dur) var(--ease),box-shadow var(--dur) var(--ease),background-color .25s,color .25s,border-color .25s}
 .d-btn>span[aria-hidden]{display:inline-block;transition:translate var(--dur) var(--ease)}
-.d-btn:hover{translate:var(--lift);box-shadow:var(--shadow-h);background:color-mix(in oklab,var(--accent) 86%,var(--ink))}
+.d-btn:hover{translate:var(--lift);scale:var(--hover-s);rotate:var(--hover-r);box-shadow:var(--shadow-h);background:color-mix(in oklab,var(--accent) 86%,var(--ink))}
 .d-btn:hover>span[aria-hidden]{translate:.3em 0}
 .d-btn:active{translate:var(--press);box-shadow:var(--press-shadow);transition-duration:.06s}
 .d-btn[data-variant=outline]:hover{background:var(--ink);color:var(--bg)}
@@ -251,53 +292,59 @@ export const DOC_CSS = `
 .d-sec[data-bg=inverse] .d-btn[data-variant=ink],.d-box[data-bg=inverse] .d-btn[data-variant=ink]{background:var(--on-inverse);color:var(--inverse);border-color:var(--on-inverse)}
 .d-sec[data-bg=accent] .d-btn:not([data-variant=outline]):not([data-variant=ghost]),.d-box[data-bg=accent] .d-btn:not([data-variant=outline]):not([data-variant=ghost]){border-color:var(--on-accent)}
 .d-btn[data-variant=ink]:hover{background:var(--accent);color:var(--on-accent)}
-.d-btn[data-variant=ghost]:hover{translate:none;box-shadow:none;background:transparent;text-decoration-thickness:3px;color:var(--accent-text)}
-.d-box[data-variant=card]{transition:translate var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
-.d-box[data-variant=card]:not(:has(.d-table,.d-field,.d-box[data-variant=card])):hover{translate:var(--lift);box-shadow:var(--shadow-h)}
+.d-btn[data-variant=ghost]:hover{translate:none;scale:none;rotate:none;box-shadow:none;background:transparent;text-decoration-thickness:3px;color:var(--accent-text)}
+.d-box[data-variant=card]{transition:translate var(--dur) var(--ease),scale var(--dur) var(--ease),rotate var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.d-box[data-variant=card]:not(:has(.d-table,.d-field,.d-box[data-variant=card])):hover{translate:var(--lift);scale:var(--hover-sl);rotate:var(--hover-rl);box-shadow:var(--shadow-h)}
 .d-img .d-art,.d-img img.d-photo{transition:scale 1.1s var(--ease)}
-.d-img:hover .d-art,.d-img:hover img.d-photo{scale:1.07}
+.d-img:hover .d-art,.d-img:hover img.d-photo{scale:var(--hover-img)}
 /* only the hero image drifts: one moving thing at a time, so the page has somewhere for the eye to rest */
-.d-sec[data-role=hero] .d-img:not([data-frame]):not([data-icon]) .d-art{animation:d-drift 26s ease-in-out infinite alternate}
+.d-sec[data-role=hero] .d-img:not([data-frame]):not([data-icon]) .d-art{animation:d-drift calc(26s * var(--bgm-t)) var(--bgm-loop)}
 @keyframes d-drift{from{transform:scale(1.1) translate(-1.6%,-1%)}to{transform:scale(1.1) translate(1.6%,1%)}}
 .d-nav-links a{background:linear-gradient(currentColor,currentColor) left bottom/0 1.5px no-repeat;padding-bottom:.15em;transition:background-size .4s var(--ease),color .2s}
 .d-nav-links a:hover{background-size:100% 1.5px}
 .d-list li .d-li-title{transition:translate .35s var(--ease),color .2s}
-.d-list[data-variant=index] li:hover .d-li-title{translate:.35em 0;color:var(--accent-text)}
+.d-list[data-variant=index] li:hover .d-li-title{translate:var(--nudge) 0;color:var(--accent-text)}
 .d-table td{transition:background-color .2s}
 .d-table tbody tr:hover td{background:color-mix(in oklab,var(--accent) 14%,transparent)}
 .d-marquee:hover .d-marquee-track{animation-play-state:paused}
 .d-tag{transition:translate .3s var(--ease),background-color .2s}
-.d-tag:hover{translate:0 -2px}
+.d-tag:hover{translate:0 var(--nudge-y)}
 .d-doc a:focus-visible,.d-faq summary:focus-visible{outline:2px solid var(--accent-text);outline-offset:3px;border-radius:4px}
 /* entrance: the hero plays in on load, everything below rises into view as it is scrolled to */
-@keyframes d-in{from{opacity:0;translate:0 26px}}
-.d-sec[data-role=hero] :is(.d-tag,.d-h,.d-text,.d-btn,.d-img,.d-stat,.d-nav){animation:d-in 1s var(--ease) backwards}
-.d-sec[data-role=hero] .d-tag{animation-delay:.05s}
-.d-sec[data-role=hero] .d-h{animation-delay:.15s}
-.d-sec[data-role=hero] .d-text{animation-delay:.3s}
-.d-sec[data-role=hero] .d-btn{animation-delay:.42s}
-.d-sec[data-role=hero] .d-btn+.d-btn{animation-delay:.52s}
-.d-sec[data-role=hero] .d-img{animation-delay:.25s;animation-duration:1.3s}
-@keyframes d-rise{from{opacity:0;translate:0 38px}}
-.d-frame[data-reveal=on] [data-rv=out]{opacity:0}
-.d-frame[data-reveal=on] [data-rv=in]{animation:d-rise 1s var(--ease) backwards;animation-delay:calc(var(--rv,0) * 80ms)}
+@keyframes d-in{from{opacity:var(--in-o);translate:var(--in-move);scale:var(--in-scale);clip-path:var(--in-clip)}to{clip-path:var(--in-clip-to)}}
+.d-sec[data-role=hero] :is(.d-tag,.d-h,.d-text,.d-btn,.d-img,.d-stat,.d-nav){animation:d-in var(--in-dur) cubic-bezier(.22,1,.36,1) backwards}
+.d-sec[data-role=hero] .d-tag{animation-delay:calc(.05s * var(--in-gap))}
+.d-sec[data-role=hero] .d-h{animation-delay:calc(.15s * var(--in-gap))}
+.d-sec[data-role=hero] .d-text{animation-delay:calc(.3s * var(--in-gap))}
+.d-sec[data-role=hero] .d-btn{animation-delay:calc(.42s * var(--in-gap))}
+.d-sec[data-role=hero] .d-btn+.d-btn{animation-delay:calc(.52s * var(--in-gap))}
+.d-sec[data-role=hero] .d-img{animation-delay:calc(.25s * var(--in-gap));animation-duration:calc(var(--in-dur) * 1.3)}
+.d-frame[data-reveal=on] [data-rv=out]{opacity:var(--rv-hide)}
+.d-frame[data-reveal=on] [data-rv=in]{animation:d-in var(--in-dur) cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(var(--rv,0) * 80ms * var(--in-gap))}
 .d-frame.still [data-rv],.d-frame.wire [data-rv]{opacity:1 !important}
 @media (prefers-reduced-motion:reduce){[data-rv]{opacity:1 !important}.d-doc *,.d-doc *::before,.d-doc *::after{animation:none !important;transition:none !important}}
 /* animated backdrops: blurred colour fields drift behind the content, grids and dots pan, art floats */
 [data-backdrop=wash]::before,[data-backdrop=aurora]::before,[data-backdrop=aurora]::after{content:'';position:absolute;pointer-events:none;z-index:0;will-change:transform}
-[data-backdrop=wash]::before{inset:-25%;background-image:radial-gradient(60% 90% at 88% 0%,color-mix(in oklab,var(--accent) calc(var(--bd-s) * 18%),transparent),transparent 70%),radial-gradient(45% 70% at 0% 100%,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 45%),transparent),transparent 70%);animation:d-wash 20s ease-in-out infinite alternate}
+[data-backdrop=wash]::before{inset:-25%;background-image:radial-gradient(60% 90% at 88% 0%,color-mix(in oklab,var(--accent) calc(var(--bd-s) * 18%),transparent),transparent 70%),radial-gradient(45% 70% at 0% 100%,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 45%),transparent),transparent 70%);animation:d-wash calc(20s * var(--bgm-t)) var(--bgm-loop)}
 [data-backdrop=aurora]{background-image:radial-gradient(50% 60% at 50% 120%,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 30%),transparent),transparent 80%)}
-[data-backdrop=aurora]::before{width:62%;aspect-ratio:1;left:-10%;top:-34%;border-radius:50%;background:color-mix(in oklab,var(--accent) calc(var(--bd-s) * 24%),transparent);filter:blur(72px);animation:d-blob-a 19s ease-in-out infinite alternate}
-[data-backdrop=aurora]::after{width:52%;aspect-ratio:1;right:-8%;bottom:-38%;border-radius:50%;background:color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent);filter:blur(84px);animation:d-blob-b 25s ease-in-out infinite alternate}
+[data-backdrop=aurora]::before{width:62%;aspect-ratio:1;left:-10%;top:-34%;border-radius:50%;background:color-mix(in oklab,var(--accent) calc(var(--bd-s) * 24%),transparent);filter:blur(72px);animation:d-blob-a calc(19s * var(--bgm-t)) var(--bgm-loop)}
+[data-backdrop=aurora]::after{width:52%;aspect-ratio:1;right:-8%;bottom:-38%;border-radius:50%;background:color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent);filter:blur(84px);animation:d-blob-b calc(25s * var(--bgm-t)) var(--bgm-loop)}
 @keyframes d-wash{from{transform:translate(-4%,-3%) rotate(0) scale(1)}to{transform:translate(4%,5%) rotate(7deg) scale(1.14)}}
 @keyframes d-blob-a{0%{transform:translate(0,0) scale(1)}50%{transform:translate(20%,24%) scale(1.25)}100%{transform:translate(44%,6%) scale(.92)}}
 @keyframes d-blob-b{0%{transform:translate(0,0) scale(1.1)}50%{transform:translate(-32%,-20%) scale(.85)}100%{transform:translate(-14%,-44%) scale(1.2)}}
 @keyframes d-pan-grid{to{transform:translate(44px,44px)}}
 @keyframes d-pan-dots{to{transform:translate(20px,20px)}}
-.d-bd .d-art{animation:d-float-art 30s ease-in-out infinite alternate}
+@keyframes d-pan-hatch{to{transform:translateX(14.142px)}}
+@keyframes d-split{to{transform:scaleX(1.14)}}
+.d-bd .d-art{animation:d-float-art calc(30s * var(--bgm-t)) var(--bgm-loop)}
 @keyframes d-float-art{from{transform:scale(1.06) rotate(-1.5deg) translate(-1%,-1%)}to{transform:scale(1.16) rotate(1.5deg) translate(1%,1.5%)}}
-.d-bd img{animation:d-kenburns 36s ease-in-out infinite alternate}
+.d-bd img{animation:d-kenburns calc(36s * var(--bgm-t)) var(--bgm-loop)}
 @keyframes d-kenburns{from{transform:scale(1)}to{transform:scale(1.12) translate(-1.5%,-1%)}}
+/* breathe: everything pulses in place instead of travelling */
+.d-doc[data-bgm=breathe] :is([data-backdrop=wash],[data-backdrop=aurora],[data-backdrop=grid],[data-backdrop=dots],[data-backdrop=hatch],[data-backdrop=split])::before,.d-doc[data-bgm=breathe] [data-backdrop=aurora]::after{animation:d-breathe 7s ease-in-out infinite alternate}
+.d-doc[data-bgm=breathe] :is(.d-bd .d-art,.d-bd img,.d-sec[data-role=hero] .d-img:not([data-frame]):not([data-icon]) .d-art){animation:d-breathe-art 8s ease-in-out infinite alternate}
+@keyframes d-breathe{from{opacity:.35}to{opacity:1;scale:1.08}}
+@keyframes d-breathe-art{from{transform:scale(1.04)}to{transform:scale(1.14)}}
 /* responsive: container queries on the frame so the canvas viewport toggle works */
 @container doc (max-width: 900px){
   .d-box[data-dir=row]:not([data-keep=true]),.d-box[data-dir=grid]{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
@@ -319,6 +366,7 @@ export const DOC_CSS = `
 /* wireframe: grey structure only, skin hidden */
 .d-frame.wire .d-doc{--bg:#fff;--surface:#f1f1f1;--ink:#2b2b2b;--muted:#7a7a7a;--line:#cfcfcf;--accent:#d9d9d9;--accent2:#e6e6e6;--on-accent:#2b2b2b;--accent-text:#2b2b2b;--inverse:#d4d4d4;--on-inverse:#2b2b2b;--f-display:ui-sans-serif,system-ui,sans-serif;--f-body:ui-sans-serif,system-ui,sans-serif;--radius:2px;--bw:1px;--shadow:none;--w-display:700;--case:none}
 .d-frame.wire .d-doc::after{display:none}
+.d-frame.wire .d-btn:hover,.d-frame.wire .d-box:hover{scale:none !important;rotate:none !important}
 .d-frame.wire .d-doc *,.d-frame.wire .d-doc *::before,.d-frame.wire .d-doc *::after{transform:none !important;translate:none !important;animation:none !important;transition:none !important}
 .d-frame.wire .d-img{background:#fafafa;border:1px solid #999;border-radius:2px;background-image:linear-gradient(to top right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px)),linear-gradient(to bottom right,transparent calc(50% - .5px),#999 calc(50% - .5px),#999 calc(50% + .5px),transparent calc(50% + .5px))}
 .d-frame.wire .d-img .d-art,.d-frame.wire .d-img img.d-photo{display:none}

@@ -2,7 +2,7 @@
 // code (see code.ts) always describes the result exactly.
 import type { Doc, PartSeeds } from '../types'
 import { SEED_MAX, applyBackdrops, archetypeFor, generate, partsOf, withSignature } from './generate'
-import { paletteGroup, shapeGroup, tokensFromParts } from './tokens'
+import { genMotion, motionGroup, paletteGroup, shapeGroup, tokensFromParts, type MotionPart } from './tokens'
 
 const withParts = (doc: Doc, patch: Partial<PartSeeds>): Doc => ({ ...doc, meta: { ...doc.meta, parts: { ...partsOf(doc), ...patch } } })
 
@@ -18,7 +18,7 @@ export function rerollToken(doc: Doc, part: TokenPart, seed: number): Doc {
   return withSignature({ ...next, tokens: { ...next.tokens, ...shapeGroup(fresh) } }, fresh.signature)
 }
 
-const KEEP_TOKENS = { palette: true, fonts: true, shape: true }
+const KEEP_TOKENS = { palette: true, fonts: true, shape: true, ambient: true, entrance: true, interaction: true }
 
 /** A different archetype and arrangement; tokens and text stay. */
 export function rerollLayout(doc: Doc, seed: number): Doc {
@@ -30,6 +30,14 @@ export function rerollLayout(doc: Doc, seed: number): Doc {
 /** New lorem ipsum; layout and tokens stay. */
 export function rerollText(doc: Doc, seed: number): Doc {
   return generate({ seed: doc.meta.seed, kind: doc.meta.kind, mood: doc.meta.mood, parts: { ...partsOf(doc), text: seed }, prev: doc, locks: { ...KEEP_TOKENS, layout: true } })
+}
+
+/** New background, entrance or interaction animation. Always lands on a different style, so a re-roll is never a no-op. */
+export function rerollMotion(doc: Doc, part: MotionPart, seed: number): Doc {
+  const now = JSON.stringify(motionGroup(doc.tokens, part))
+  let s = seed
+  while (JSON.stringify(genMotion(part, s, doc.meta.mood)) === now) s = (s + 7919) % (SEED_MAX + 1)
+  return { ...withParts(doc, { [part]: s }), tokens: { ...doc.tokens, ...genMotion(part, s, doc.meta.mood) } }
 }
 
 export function rerollBackdrops(doc: Doc, seed: number): Doc {

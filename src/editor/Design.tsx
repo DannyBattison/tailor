@@ -1,6 +1,8 @@
 import { useRef } from 'react'
+import { replayEntrance } from '../actions'
 import { walk, updateProps } from '../lib/tree'
 import { GOOGLE_FONTS, bodyFace, fontSpec, headingFace } from '../gen/fonts'
+import { AMBIENTS, ENTRANCES, FEELS, HOVERS } from '../gen/tokens'
 import { FontInput } from './FontInput'
 import { withSignature } from '../gen/generate'
 import { paletteIssues, paletteOf } from '../gen/palette'
@@ -89,10 +91,18 @@ export function Design() {
         <select value={t.shadow} onChange={(e) => set({ shadow: e.target.value as Tokens['shadow'] }, 'shadow')}><option>none</option><option>soft</option><option>hard</option></select></div>
       <div className="field"><label>Heading case</label>
         <select value={t.headingCase} onChange={(e) => set({ headingCase: e.target.value as Tokens['headingCase'] }, 'case')}><option value="none">as written</option><option value="uppercase">UPPERCASE</option><option value="lowercase">lowercase</option></select></div>
-      <div className="field"><label>Motion</label>
-        <select value={t.motion ?? 'smooth'} onChange={(e) => set({ motion: e.target.value as Tokens['motion'] }, 'motion')}><option value="smooth">smooth (eased, unhurried)</option><option value="snappy">snappy (short, crisp)</option><option value="springy">springy (overshoots)</option></select></div>
       <div className="field"><label>Signature move</label>
         <select value={t.signature} onChange={(e) => mutate((d) => withSignature(d, e.target.value as Signature))}>{SIGS.map((s) => <option key={s}>{s}</option>)}</select></div>
+
+      <label className="lbl">Animation</label>
+      <div className="field"><label>Background</label>
+        <select value={t.ambient ?? 'drift'} onChange={(e) => set({ ambient: e.target.value as Tokens['ambient'] }, 'ambient')}>{AMBIENTS.map((s) => <option key={s}>{s}</option>)}</select></div>
+      <div className="field"><label>Entrance</label>
+        <select value={t.entrance ?? 'rise'} onChange={(e) => { set({ entrance: e.target.value as Tokens['entrance'] }, 'entrance'); replayEntrance() }}>{ENTRANCES.map((s) => <option key={s}>{s}</option>)}</select></div>
+      <div className="field"><label>Hover</label>
+        <select value={t.hover ?? 'lift'} onChange={(e) => set({ hover: e.target.value as Tokens['hover'] }, 'hover')}>{HOVERS.map((s) => <option key={s}>{s}</option>)}</select></div>
+      <div className="field"><label>Hover timing</label>
+        <select value={t.motion ?? 'smooth'} onChange={(e) => set({ motion: e.target.value as Tokens['motion'] }, 'motion')}>{FEELS.map((s) => <option key={s}>{s}</option>)}</select></div>
     </div>
   )
 }

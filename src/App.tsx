@@ -7,6 +7,7 @@ import { Generate } from './editor/Generate'
 import { Inspector } from './editor/Inspector'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
+import { upgradeDoc } from './gen/generate'
 import { designSystem, designSystemPrompt } from './designSystem'
 import { commit, getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 import type { Doc } from './types'
@@ -62,7 +63,7 @@ function TopBar() {
         try {
           const d = JSON.parse(await f.text()) as Doc
           if (!d.root || !d.tokens || !d.meta) throw new Error('Not a Tailor page tree')
-          commit(d, '', true); setUI({ selectedId: null, codeInput: null }); toast('Imported')
+          commit(upgradeDoc(d), '', true); setUI({ selectedId: null, codeInput: null }); toast('Imported')
         } catch (er) { toast((er as Error).message) }
       }} />
     </header>

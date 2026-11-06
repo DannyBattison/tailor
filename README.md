@@ -13,7 +13,7 @@ specimen page with lorem ipsum text; the real output is the design system JSON /
 * `src/render` – tree → React components + one doc stylesheet shared by canvas and export (CSS variables, clamp()/cqw, @container).
 * `src/editor` – canvas, drag & drop, inspector, generate/critique panels.
 * `src/gen/fonts.ts` + `googleFonts.json` – any free Google font: the seed picks two (curated pairings or rule-based ones from ~1,200 families); you can type your own two with autocomplete. Refresh the list with `node scripts/gen-fonts.mjs`.
-* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Motion (hover, load and scroll reveals, animated backdrops) follows the design's `motion` token.
+* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Animation is three independent parts, each with its own seed and lock: background (what moves on its own), entrance (how content arrives) and interaction (how elements answer the pointer).
 * `src/designSystem.ts` – the export: tokens, rules, components, a section-pattern library and page recipes.
 
 ## Desktop app (Electron)
@@ -26,7 +26,7 @@ There is no AI integration and no network use beyond Google Fonts and placehold.
 
 ## Seeds
 
-The seed shown in the Generate tab is a 35-digit design code: six 5-digit blocks (palette, fonts, shape, layout, text, backdrops)
-and a setup block (mood, product, background boldness, mode). Re-rolling a part rewrites only its own block, and loading a seed
-rebuilds the generated design exactly. A new design starts with a fully random seed.
+The seed shown in the Generate tab is a 50-digit design code: nine 5-digit blocks (palette, fonts, shape, layout, text, backdrops,
+background animation, entrance animation, interaction animation) and a setup block (mood, product, background boldness, mode). Re-rolling a part rewrites only its own block, and loading a seed
+rebuilds the generated design exactly. Older 35-digit seeds still load and get animation derived from their other blocks. A new design starts with a fully random seed.
 Hand edits (tree edits, sliders, swatches) are not part of the code; export the page tree JSON to keep those.

@@ -1,14 +1,25 @@
 import { useRef } from 'react'
-import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, rerollBackdrops, rerollLayout, rerollPart, rerollText, type Part } from '../actions'
+import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, replayEntrance, rerollBackdrops, rerollLayout, rerollMotion, rerollPart, rerollText, type MotionPart, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
 import { designCode } from '../gen/code'
 import { copyText } from '../export'
 import { fontSpec, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
 import { paletteFromImage } from '../imagePalette'
+import { walk } from '../lib/tree'
 import { DocView } from '../render/Doc'
 import { mutate, setUI, toast, useStore } from '../store'
-import type { Locks } from '../types'
+import type { DNode, Locks } from '../types'
+
+/** Background animation needs something behind the content to move: a backdrop or the hero's generated art. The marquee moves regardless. */
+function hasAmbientTarget(root: DNode) {
+  let found = false
+  walk(root, (n) => {
+    if (n.props.backdrop && n.props.backdrop !== 'noise') found = true
+    if (n.type === 'section' && n.props.role === 'hero') walk(n, (c) => { if (c.type === 'image' && !c.props.frame && !c.props.icon && !c.props.source) found = true })
+  })
+  return found
+}
 
 interface Row { label: string; hint: string; lock?: keyof Locks; run: () => void; disabled?: boolean; extra?: { label: string; run: () => void } }
 
@@ -40,6 +51,15 @@ export function Generate() {
     { label: 'Layout', hint: archetypesFor(doc.meta.kind).find((a) => a.id === doc.meta.archetype)?.name ?? '', lock: 'layout', run: rerollLayout },
     { label: 'Text', hint: 'new lorem ipsum', lock: 'copy', run: rerollText },
     { label: 'Backdrops', hint: 'hero and band backgrounds', run: rerollBackdrops },
+  ]
+
+  const t = doc.tokens
+  const isApp = doc.meta.kind === 'app' // app screens have no backdrops or sections for these to act on
+  const motion = (p: MotionPart) => () => rerollMotion(p)
+  const motionRows: Row[] = [
+    { label: 'Background', hint: (t.ambient ?? 'drift') + (isApp ? ' · app UIs have no backdrops' : hasAmbientTarget(doc.root) ? ' · behind the content' : ' · no backdrop on this page'), lock: 'ambient', run: motion('ambient'), disabled: isApp },
+    { label: 'Entrance', hint: (t.entrance ?? 'rise') + (isApp ? ' · app UIs have no entrances' : ' · as content arrives'), lock: 'entrance', run: motion('entrance'), disabled: isApp, extra: isApp ? undefined : { label: 'Replay', run: replayEntrance } },
+    { label: 'Interaction', hint: `${t.hover ?? 'lift'}, ${t.motion ?? 'smooth'} · on hover`, lock: 'interaction', run: motion('interaction') },
   ]
 
   const rowView = (r: Row) => {
@@ -80,9 +100,11 @@ export function Generate() {
         <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this seed">Load</button>
         <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's seed">Copy</button>
       </div>
-      <textarea className="seedbox" rows={2} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Six 5-digit blocks (palette, fonts, shape, layout, text, backdrops) and a setup block. Recreates this design exactly." />
-      <p className="hint">The seed is seven 5-digit blocks: palette, fonts, shape, layout, text, backdrops, then setup (mood, product, boldness, mode). Re-rolling a part rewrites only its block, and loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
+      <textarea className="seedbox" rows={3} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Nine 5-digit blocks (palette, fonts, shape, layout, text, backdrops, background, entrance, interaction) and a setup block. Recreates this design exactly." />
+      <p className="hint">The seed is ten 5-digit blocks: palette, fonts, shape, layout, text, backdrops, the three animations, then setup (mood, product, boldness, mode). Re-rolling a part rewrites only its block, and loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
       <div className="parts">{rows.map(rowView)}</div>
+      <label className="lbl">Animation</label>
+      <div className="parts">{motionRows.map(rowView)}</div>
       {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
 
       <p className="hint">The page on the canvas is a specimen with lorem ipsum text. The export is the design system; your AI writes the real copy.</p>

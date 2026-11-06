@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { generateGuarded } from './gen/generate'
+import { generateGuarded, upgradeDoc } from './gen/generate'
 import { loadSigs, pushSig, sigOf } from './gen/guard'
 import type { Doc, Kind, Locks } from './types'
 
@@ -21,6 +21,8 @@ export interface UI {
   menu: '' | 'export'
   /** which sidebar drawer is open on narrow screens */
   drawer: '' | 'left' | 'right'
+  /** bumped to restart the canvas page and play its entrance again */
+  replay: number
 }
 export interface State { doc: Doc; past: Doc[]; future: Doc[]; ui: UI }
 
@@ -29,19 +31,19 @@ const LS_UI = 'hm.ui'
 
 const defaultUI = (): UI => ({
   selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '',
-  codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false },
-  variants: null, busy: '', toast: '', menu: '', drawer: '',
+  codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false, ambient: false, entrance: false, interaction: false },
+  variants: null, busy: '', toast: '', menu: '', drawer: '', replay: 0,
 })
 
 function load(): State {
   const ui = defaultUI()
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
-    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', drawer: '', codeInput: null })
+    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', drawer: '', codeInput: null, replay: 0 })
     if (ui.leftTab !== 'critique') ui.leftTab = 'generate' // saved by a build that still had the Add and Layers tabs
     localStorage.removeItem('hm.key') // earlier builds could store an API key here; there is no AI integration any more
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
-    if (d?.root && d.tokens) return { doc: d, past: [], future: [], ui }
+    if (d?.root && d.tokens) return { doc: upgradeDoc(d), past: [], future: [], ui }
   } catch { /* fall through */ }
   const doc = generateGuarded({ seed: Math.floor(Math.random() * 2 ** 31), kind: ui.kind, mood: ui.mood }, loadSigs())
   pushSig(sigOf(doc))
@@ -57,7 +59,7 @@ function persist() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(LS_DOC, JSON.stringify(state.doc))
-      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, drawer: _d, codeInput: _c, ...rest } = state.ui
+      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, drawer: _d, codeInput: _c, replay: _r, ...rest } = state.ui
       localStorage.setItem(LS_UI, JSON.stringify(rest))
     } catch { /* quota */ }
   }, 250)

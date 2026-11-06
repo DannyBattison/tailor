@@ -149,7 +149,7 @@ export function Canvas() {
           onDrop={onDrop}
           onDragEnd={() => { drag.current = null; setDrop(null) }}
         >
-          <DocView root={doc.root} tokens={doc.tokens} wire={ui.wire} ctx={{ editor: true, selectedId: ui.selectedId, hoverId: hover }} />
+          <DocView key={ui.replay} root={doc.root} tokens={doc.tokens} wire={ui.wire} ctx={{ editor: true, selectedId: ui.selectedId, hoverId: hover }} />
           {selBox && <div className="sel-chip" style={{ left: selBox.x, top: Math.max(0, selBox.y - 22) }}>{find(doc.root, ui.selectedId ?? '')?.type}</div>}
           {drop && <DropIndicator d={drop} root={doc.root} />}
         </div>

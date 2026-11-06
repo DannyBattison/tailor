@@ -5,6 +5,7 @@ import { loadSigs } from './gen/guard'
 import { paletteOf } from './gen/palette'
 import { duplicateNode, findParent, mapNode, removeNode, updateProps } from './lib/tree'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
+import type { MotionPart } from './gen/tokens'
 import type { Doc } from './types'
 
 /** a fresh base seed (parts are derived from it) */
@@ -42,12 +43,17 @@ export function pickVariant(d: Doc) {
 }
 
 export type Part = R.TokenPart
+export type { MotionPart } from './gen/tokens'
 
 /** Re-rolls: each gives one part a new seed, so the design code always describes the result. */
 export function rerollLayout() { mutate((d) => R.rerollLayout(d, rand5()), '', true); setUI({ selectedId: null }) }
 export function rerollPart(part: Part) { mutate((d) => R.rerollToken(d, part, rand5()), '', true) }
 export function rerollText() { mutate((d) => R.rerollText(d, rand5()), '', true); setUI({ selectedId: null }) }
 export function rerollBackdrops() { mutate((d) => R.rerollBackdrops(d, rand5()), '', true) }
+export function rerollMotion(part: MotionPart) { mutate((d) => R.rerollMotion(d, part, rand5()), '', true); if (part === 'entrance') replayEntrance() }
+
+/** Entrances only play once, so restart the canvas page to show one. */
+export function replayEntrance() { setUI({ replay: getState().ui.replay + 1 }) }
 
 /** Switch between marketing site and app UI. The design's seed (parts, mood, boldness, mode) carries over; only the kind changes. */
 export function newDocFromScratch(kind: 'marketing' | 'app') {
