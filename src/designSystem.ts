@@ -8,7 +8,7 @@ import { walk } from './lib/tree'
 import { makeRng } from './lib/rng'
 import { SECTIONS, planFor, type Ctx } from './gen/build'
 import { PLACEHOLDER_APP, PLACEHOLDER_MARKETING } from './gen/content'
-import type { DNode, Doc } from './types'
+import type { AmbientMotion, DNode, Doc, EntranceMotion, HoverMotion } from './types'
 
 const SIGNATURES: Record<string, string> = {
   hardShadow: 'Cards and buttons carry a hard offset shadow in the ink colour and a visible border; no blur anywhere.',
@@ -100,6 +100,29 @@ const APP_PAGES = [
 ]
 
 /** A self-contained description of the design, meant to be handed to another AI or developer. */
+const AMBIENT_RULES: Record<AmbientMotion, string> = {
+  still: 'Nothing moves on its own. Backdrops are static; only a marquee keeps sliding.',
+  drift: 'Slow travel (20s+): colour fields wander, grids and hatching pan, art floats.',
+  breathe: 'Things pulse in place on a 7-8s cycle, fading and swelling without travelling.',
+  sweep: 'The same travel as a slow drift at about three times the speed, so it is clearly noticed.',
+  stutter: 'Stop-motion: travel moves in visible steps rather than easing, like hand-cut animation.',
+}
+const ENTRANCE_RULES: Record<EntranceMotion, string> = {
+  none: 'Content is simply there. No entrance animation at all.',
+  rise: 'Fade in while rising 30px.',
+  fade: 'Opacity only, unhurried.',
+  zoom: 'Fade in while settling from 93% scale.',
+  slide: 'Fade in while sliding 40px from the left, quick and tightly staggered.',
+  wipe: 'Revealed top to bottom by a clip-path wipe, with no fade.',
+}
+const HOVER_RULES: Record<HoverMotion, string> = {
+  lift: 'Buttons and cards rise and their shadow grows; list titles nudge along; images zoom slowly.',
+  sink: 'Buttons and cards press in and their shadow shrinks, as if being pushed.',
+  grow: 'Buttons and cards scale up slightly with no travel; images zoom further.',
+  tilt: 'Buttons and cards rise and rotate a degree or so.',
+  glow: 'Nothing moves: buttons and cards gain an accent ring and halo.',
+}
+
 export function designSystem(doc: Doc) {
   const t = doc.tokens
   const f = fontSpec(t)
@@ -149,13 +172,13 @@ export function designSystem(doc: Doc) {
       density: t.density, spacingUnit: tokenVars(t)['--space'],
     },
     motion: {
-      style: t.motion ?? 'smooth', easing: tokenVars(t)['--ease'], duration: tokenVars(t)['--dur'],
-      rules: [
-        'Every interactive element transitions (buttons lift and press, cards rise with a larger shadow, nav links underline, list titles slide, images zoom slowly, table rows tint).',
-        'The hero plays in on load, staggered; later sections rise and fade in as they scroll into view (scroll-driven animation, no JS).',
-        'Backdrops move: aurora blobs and washes drift, grids and dots pan, art floats. All are slow (20s+), low contrast and sit behind content.',
-        'Animate only transform, translate, opacity and background-position. Always honour prefers-reduced-motion.',
-      ],
+      // app screens have no backdrops or sections for these to act on
+      ...(doc.meta.kind === 'app' ? {} : {
+        background: { style: t.ambient ?? 'drift', rule: AMBIENT_RULES[t.ambient ?? 'drift'], appliesTo: 'backdrops, hero image, marquee' },
+        entrance: { style: t.entrance ?? 'rise', rule: ENTRANCE_RULES[t.entrance ?? 'rise'], appliesTo: 'hero on load, staggered; later blocks once as they scroll into view' },
+      }),
+      interaction: { style: t.hover ?? 'lift', timing: t.motion ?? 'smooth', rule: HOVER_RULES[t.hover ?? 'lift'], appliesTo: 'buttons and cards as described; nav links also underline, table rows tint, FAQ items open' },
+      rules: ['Use these styles everywhere; add no others.', 'Always honour prefers-reduced-motion.'],
     },
     signature: { name: t.signature, rule: SIGNATURES[t.signature] },
     layout: {
@@ -193,12 +216,12 @@ export function designSystem(doc: Doc) {
       'No emoji as icons. Copy is specific and concrete, with no stock phrases ("unlock the power of", "seamless").',
       `Commit to the signature move: ${SIGNATURES[t.signature]}`,
     ],
-    css: { note: 'Stylesheet used by the editor and the HTML export. Apply cssVariables to the root element .d-doc inside a .d-frame wrapper.', base: DOC_CSS.trim() },
+    css: { note: 'Stylesheet used by the preview. Apply cssVariables to the root element .d-doc inside a .d-frame wrapper, with data-sig set to the signature name and data-bgm to motion.background.style (drift in app UIs).', base: DOC_CSS.trim() },
   }
 }
 
 /** Prompt copy: same data, with the stylesheet minified so it fits comfortably in a chat. */
-const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.split('\n').filter((l) => !/\.d-frame\.(wire|still)/.test(l)).join('\n').replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
+const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.split('\n').filter((l) => !/\.d-frame\.(wire|still)/.test(l)).join('\n').replace(/\/\*.*?\*\//g, '').replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
 
 export function designSystemPrompt(doc: Doc): string {
   return `You are building a complete multi-page ${doc.meta.kind === 'app' ? 'app UI' : 'website'} for a project that already has a design system. Below is that system as JSON. It is a design system, not a page: any copy in it is placeholder, so write the real copy for the project yourself.

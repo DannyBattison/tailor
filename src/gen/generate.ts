@@ -5,7 +5,7 @@ import { ALL_ARCHETYPES, SECTIONS, archetypesFor, backdropProps, bandRhythm, cle
 import { loremApp, loremMarketing } from './lorem'
 import { sigOf, tooClose, type Sig } from './guard'
 import { MOOD_NAMES } from './moods'
-import { fixSignature, genTokens, tokensFromParts } from './tokens'
+import { MOTION_PARTS, fixSignature, genMotion, genTokens, tokensFromParts } from './tokens'
 
 export interface GenOpts {
   /** base seed: parts that aren't given explicitly are derived from it */
@@ -20,12 +20,18 @@ export interface GenOpts {
 }
 
 export const SEED_MAX = 99999 // each part seed is 5 digits
-const PART_KEYS = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'] as const
+const PART_KEYS = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction'] as const
 /** Independent 5-digit seeds for every part, derived from one base seed. */
 export const partsFromSeed = (n: number): PartSeeds =>
   Object.fromEntries(PART_KEYS.map((k) => [k, stageRng(n, 'part:' + k).int(0, SEED_MAX)])) as unknown as PartSeeds
-/** The part seeds behind a design (older saved designs fall back to what they stored). */
-export const partsOf = (d: Doc): PartSeeds => d.meta.parts ?? { ...partsFromSeed(d.meta.seed), layout: d.meta.layoutSeed, text: d.meta.contentSeed ?? d.meta.layoutSeed }
+/** The part seeds behind a design (older saved designs fall back to what they stored, and derive the parts they never had). */
+export const partsOf = (d: Doc): PartSeeds => ({ ...partsFromSeed(d.meta.seed), layout: d.meta.layoutSeed, text: d.meta.contentSeed ?? d.meta.layoutSeed, ...d.meta.parts })
+/** A design saved before animation had its own parts gets the animation its seed now describes. */
+export function upgradeDoc(d: Doc): Doc {
+  if (d.tokens.ambient) return d
+  const parts = partsOf(d)
+  return { ...d, meta: { ...d.meta, parts }, tokens: { ...d.tokens, ...Object.assign({}, ...MOTION_PARTS.map((k) => genMotion(k, parts[k], d.meta.mood))) } }
+}
 export const archetypeFor = (kind: Kind, layoutSeed: number) => stageRng(layoutSeed, 'archetype').pick(archetypesFor(kind)).id
 export const moodFor = (seed: number) => stageRng(seed, 'mood').pick(MOOD_NAMES)
 
@@ -67,6 +73,7 @@ export function generate(o: GenOpts): Doc {
     if (locks.shape) parts.shape = pp.shape
     if (same && locks.layout) { parts.layout = pp.layout; parts.backdrops = pp.backdrops }
     if (same && locks.copy) parts.text = pp.text
+    for (const k of MOTION_PARTS) if (locks[k]) parts[k] = pp[k]
   }
   Object.assign(parts, o.parts)
   const mood = o.mood || (prev && (locks.palette || locks.fonts || locks.shape) ? prev.meta.mood : moodFor(o.seed))

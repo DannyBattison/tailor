@@ -77,14 +77,14 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
     const steps: string[] = []
     for (let k = 0; k < rng.int(1, 6); k++) {
       const seed = rng.int(0, 99999)
-      const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'] as const)
+      const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction'] as const)
       steps.push(op)
       const before = designCode(d)
-      d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : RR.rerollToken(d, op, seed)
+      d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : op === 'ambient' || op === 'entrance' || op === 'interaction' ? RR.rerollMotion(d, op, seed) : RR.rerollToken(d, op, seed)
       // only the re-rolled part's own block changes
-      const idx = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'].indexOf(op)
+      const idx = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction'].indexOf(op)
       const after = designCode(d)
-      for (let b2 = 0; b2 < 7; b2++) if (b2 !== idx && block(before, b2) !== block(after, b2)) { bad++; console.log('FAIL', op, 'changed block', b2) }
+      for (let b2 = 0; b2 < 10; b2++) if (b2 !== idx && block(before, b2) !== block(after, b2)) { bad++; console.log('FAIL', op, 'changed block', b2) }
     }
     const code = designCode(d)
     const back = fromCode(code)
@@ -224,4 +224,53 @@ import { MOOD_NAMES } from '../src/gen/moods'
   for (let i = 0; i < 300; i++) seen.add(RR.rerollToken(generate({ seed: i * 13 + 1, kind: 'marketing', mood: MOOD_NAMES[i % 10] }), 'shape', i * 31 + 5).tokens.shadow)
   if (seen.size < 3) { console.log('FAIL shadow variety', [...seen]); process.exit(1) }
   console.log('shadow variety ok')
+}
+
+// animation: three independent parts, each re-rollable and lockable, and none of them owned by Shape
+import { AMBIENTS, ENTRANCES, FEELS, HOVERS, motionGroup, MOTION_PARTS } from '../src/gen/tokens'
+import { upgradeDoc } from '../src/gen/generate'
+import { tokenVars, DOC_CSS } from '../src/render/css'
+{
+  let bad = 0
+  const fail = (m: string) => { bad++; if (bad < 12) console.log('FAIL animation', m) }
+  const seen: Record<string, Set<string>> = { ambient: new Set(), entrance: new Set(), hover: new Set(), motion: new Set() }
+  for (let i = 0; i < 400; i++) {
+    const d = generate({ seed: i * 29 + 3, kind: i % 3 === 2 ? 'app' : 'marketing', mood: MOOD_NAMES[i % MOOD_NAMES.length] })
+    for (const k of Object.keys(seen)) seen[k].add(String((d.tokens as any)[k]))
+    const part = MOTION_PARTS[i % 3]
+    const next = RR.rerollMotion(d, part, i * 13)
+    if (JSON.stringify(motionGroup(next.tokens, part)) === JSON.stringify(motionGroup(d.tokens, part))) fail('re-roll landed on the same style ' + part)
+    for (const other of MOTION_PARTS) if (other !== part && JSON.stringify(motionGroup(next.tokens, other)) !== JSON.stringify(motionGroup(d.tokens, other))) fail(part + ' re-roll touched ' + other)
+    const { ambient: _a, entrance: _e, hover: _h, motion: _m, ...rest } = next.tokens
+    const { ambient: _a2, entrance: _e2, hover: _h2, motion: _m2, ...rest2 } = d.tokens
+    if (JSON.stringify(rest) !== JSON.stringify(rest2) || JSON.stringify(next.root) !== JSON.stringify(d.root)) fail(part + ' re-roll touched something other than animation')
+    const sh = RR.rerollToken(d, 'shape', i * 17)
+    for (const p of MOTION_PARTS) if (JSON.stringify(motionGroup(sh.tokens, p)) !== JSON.stringify(motionGroup(d.tokens, p))) fail('shape re-roll touched ' + p)
+    // a locked part survives New design, hand edits included
+    const edited = { ...d, tokens: { ...d.tokens, entrance: 'wipe' as const } }
+    const kept = generate({ seed: i * 31 + 7, kind: d.meta.kind, mood: d.meta.mood, prev: edited, locks: { entrance: true } })
+    if (kept.tokens.entrance !== 'wipe' || partsOf(kept).entrance !== partsOf(d).entrance) fail('entrance lock')
+    for (const [v, val] of Object.entries(tokenVars(d.tokens))) if (val === undefined || String(val).includes('undefined')) fail('css var ' + v)
+  }
+  const all = { ambient: AMBIENTS, entrance: ENTRANCES, hover: HOVERS, motion: FEELS } as Record<string, string[]>
+  for (const k of Object.keys(all)) for (const s of all[k]) if (!seen[k].has(s)) fail(k + ' never rolls ' + s)
+  // every var the stylesheet reads from the animation tokens is one tokenVars writes
+  const vars = tokenVars(generate({ seed: 5, kind: 'marketing', mood: '' }).tokens)
+  for (const m of DOC_CSS.matchAll(/var\((--(?:bgm|in|hover|nudge|rv-hide)[a-z-]*)/g)) if (!(m[1] in vars)) fail('unset css var ' + m[1])
+  // seeds and saved designs from before the animation blocks keep working
+  const base = generate({ seed: 77, kind: 'marketing', mood: '' })
+  const old = designCode(base).slice(0, 30) + designCode(base).slice(45)
+  const loaded = fromCode(old)
+  if (!loaded || old.length !== 35) fail('old seed rejected')
+  else {
+    if (JSON.stringify(loaded.tokens.palette) !== JSON.stringify(base.tokens.palette) || loaded.meta.archetype !== base.meta.archetype) fail('old seed changed the design')
+    if (designCode(loaded).length !== CODE_LENGTH || fingerprint(fromCode(designCode(loaded))!) !== fingerprint(loaded)) fail('old seed does not round trip')
+  }
+  const { ambient: _x, entrance: _y, hover: _z, ...oldTokens } = base.tokens
+  const { ambient: _p, entrance: _q, interaction: _r, ...oldParts } = partsOf(base)
+  const saved = upgradeDoc({ ...base, tokens: oldTokens, meta: { ...base.meta, parts: oldParts as any } })
+  const rebuilt = fromCode(designCode(saved))!
+  if (!saved.tokens.ambient || MOTION_PARTS.some((p) => JSON.stringify(motionGroup(rebuilt.tokens, p)) !== JSON.stringify(motionGroup(saved.tokens, p)))) fail('old saved design does not match its seed')
+  if (bad) { console.log(bad + ' animation failures'); process.exit(1) }
+  console.log('animation ok')
 }

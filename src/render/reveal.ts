@@ -1,6 +1,5 @@
 /** Scroll reveal. An IntersectionObserver marks blocks below the fold (data-rv=out) and flips them to `in` as they are scrolled to.
- *  It replaces CSS view() timelines, which ignore the editor's scaled stage and break under sticky ancestors.
- *  Self-contained on purpose: the export inlines `initReveal.toString()` as a script. */
+ *  It replaces CSS view() timelines, which ignore the editor's scaled stage and break under sticky ancestors. */
 export function initReveal(frame: Element | null): () => void {
   if (!frame || typeof IntersectionObserver === 'undefined') return () => {}
   const targets: Element[] = []
@@ -25,5 +24,3 @@ export function initReveal(frame: Element | null): () => void {
   frame.setAttribute('data-reveal', 'on')
   return () => io.disconnect()
 }
-
-export const revealScript = () => `<script>var __name=function(f){return f};(${initReveal.toString()})(document.querySelector('.d-frame'))</script>`

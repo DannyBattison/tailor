@@ -37,6 +37,12 @@ export interface PaletteSpec {
 export type ShadowKind = 'none' | 'soft' | 'hard'
 export type Signature = 'hardShadow' | 'oversized' | 'ruled' | 'grain' | 'tilted' | 'inverted' | 'marquee'
 export type Motion = 'smooth' | 'snappy' | 'springy'
+/** what moves on its own, behind the content */
+export type AmbientMotion = 'still' | 'drift' | 'breathe' | 'sweep' | 'stutter'
+/** how content arrives, on load and as it is scrolled to */
+export type EntranceMotion = 'none' | 'rise' | 'fade' | 'zoom' | 'slide' | 'wipe'
+/** how elements answer the pointer */
+export type HoverMotion = 'lift' | 'sink' | 'grow' | 'tilt' | 'glow'
 export type HeadingCase = 'none' | 'uppercase' | 'lowercase'
 
 export type FontCat = 'serif' | 'sans' | 'display' | 'script' | 'mono'
@@ -66,7 +72,11 @@ export interface Tokens {
   headingCase: HeadingCase
   tracking: number
   signature: Signature
-  /** how hovers, reveals and backdrops move; absent = smooth */
+  /** absent on designs saved before motion had its own parts */
+  ambient?: AmbientMotion
+  entrance?: EntranceMotion
+  hover?: HoverMotion
+  /** the timing of hovers and presses; absent = smooth */
   motion?: Motion
 }
 
@@ -80,6 +90,9 @@ export interface PartSeeds {
   layout: number
   text: number
   backdrops: number
+  ambient: number
+  entrance: number
+  interaction: number
 }
 
 export interface Meta {
@@ -90,7 +103,7 @@ export interface Meta {
   layoutSeed: number
   contentSeed?: number
   parts?: PartSeeds
-  /** changed by hand since generation (tree edits, sliders, swatches): the design code no longer recreates it exactly */
+  /** changed by hand since generation (sliders, swatches, typed fonts): the design code no longer recreates it exactly */
   edited?: boolean
   name: string
 }
@@ -107,4 +120,7 @@ export interface Locks {
   shape: boolean
   layout: boolean
   copy: boolean
+  ambient: boolean
+  entrance: boolean
+  interaction: boolean
 }

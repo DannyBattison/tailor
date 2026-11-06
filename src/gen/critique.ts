@@ -4,7 +4,7 @@ import type { DNode, Doc } from '../types'
 import { BANNED_FONTS, fontSpec } from './fonts'
 import { isBannedHue, paletteIssues } from './palette'
 
-export interface Issue { id: string; level: 'fail' | 'warn' | 'pass'; title: string; detail: string; nodeId?: string }
+export interface Issue { id: string; level: 'fail' | 'warn' | 'pass'; title: string; detail: string }
 
 const equalCols = (cols: unknown, n: number) => {
   if (cols == null || cols === '') return true
@@ -43,7 +43,7 @@ export function critique(doc: Doc): Issue[] {
     if (n.type !== 'box' || n.children.length < 3 || n.children.length > 4) return
     const same = n.children.every((c) => c.type === 'box' && c.props.variant === 'card') && new Set(n.children.map(shape)).size === 1
     if (same && equalCols(n.props.cols, n.children.length) && !n.children.some((c) => c.props.bg || c.props.span))
-      out.push({ id: 'cards-' + n.id, level: 'fail', title: 'Three equal cards', detail: 'Identical cards in equal columns is the template look. Vary width, fill or content.', nodeId: n.id })
+      out.push({ id: 'cards-' + n.id, level: 'fail', title: 'Three equal cards', detail: 'Identical cards in equal columns is the template look. Vary width, fill or content.' })
   })
 
   // everything centred
