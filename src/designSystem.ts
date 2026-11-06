@@ -6,7 +6,7 @@ import { contrast, hexToOklch } from './lib/color'
 import { placeholdColors, placeholdUrl } from './render/placehold'
 import { walk } from './lib/tree'
 import { makeRng } from './lib/rng'
-import { SECTIONS, type Ctx } from './gen/build'
+import { SECTIONS, planFor, type Ctx } from './gen/build'
 import { PLACEHOLDER_APP, PLACEHOLDER_MARKETING } from './gen/content'
 import type { DNode, Doc } from './types'
 
@@ -77,7 +77,7 @@ function patternLibrary(doc: Doc) {
   const cont = { c: PLACEHOLDER_MARKETING, a: PLACEHOLDER_APP }
   const wanted = Object.keys(SECTIONS).filter((k) => (doc.meta.kind === 'app' ? k.startsWith('app.') || k.startsWith('nav.') : !k.startsWith('app.')))
   return wanted.map((key) => {
-    const x: Ctx = { rng: makeRng(doc.meta.layoutSeed + key.length * 131), t: doc.tokens, ...cont }
+    const x: Ctx = { plan: planFor(doc.meta.layoutSeed), rng: makeRng(doc.meta.layoutSeed + key.length * 131), t: doc.tokens, ...cont }
     const tree = SECTIONS[key](x)
     return { key, use: PATTERN_NOTES[key] ?? '', structure: outline(tree, 0, 3) }
   })
@@ -198,7 +198,7 @@ export function designSystem(doc: Doc) {
 }
 
 /** Prompt copy: same data, with the stylesheet minified so it fits comfortably in a chat. */
-const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
+const compact = (ds: ReturnType<typeof designSystem>) => ({ ...ds, css: { ...ds.css, base: ds.css.base.split('\n').filter((l) => !/\.d-frame\.(wire|still)/.test(l)).join('\n').replace(/\s*([{};:,>])\s*/g, '$1').replace(/\s+/g, ' ') } })
 
 export function designSystemPrompt(doc: Doc): string {
   return `You are building a complete multi-page ${doc.meta.kind === 'app' ? 'app UI' : 'website'} for a project that already has a design system. Below is that system as JSON. It is a design system, not a page: any copy in it is placeholder, so write the real copy for the project yourself.

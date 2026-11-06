@@ -1,11 +1,32 @@
 // Section builders and layout archetypes. Everything here is pure: (ctx) -> nodes.
-import type { Rng } from '../lib/rng'
+import { stageRng, type Rng } from '../lib/rng'
 import { mk } from '../lib/tree'
 import type { DNode, Kind, Props, Tokens } from '../types'
 import type { AppContent, MarketingContent } from './content'
 import { ART_KINDS } from '../render/art'
 
+/** Choices made once per page, so every section speaks the same visual language. */
+export interface Plan {
+  /** alignment of centred-or-left section intros (features, pricing, logos) */
+  align?: 'center'
+  imgShape?: string
+  iconShape?: string
+  iconTone: number
+  art: string
+  cardFill?: string
+  /** the one loud fill: stats band, closing call, featured plan */
+  loud: 'accent' | 'inverse'
+}
+export function planFor(layoutSeed: number): Plan {
+  const r = stageRng(layoutSeed, 'plan')
+  return {
+    align: r.pick([undefined, 'center'] as const), imgShape: r.pick([undefined, 'arch'] as const), iconShape: r.pick(['circle', undefined] as const), iconTone: r.pick([1, 2]),
+    art: r.pick([...ART_KINDS]), cardFill: r.pick([undefined, 'surface']), loud: r.pick(['accent', 'inverse'] as const),
+  }
+}
+
 export interface Ctx {
+  plan: Plan
   rng: Rng
   t: Tokens
   c: MarketingContent
@@ -22,7 +43,7 @@ const col = (children: DNode[], extra: Props = {}) => mk('box', { dir: 'col', ..
 const btnRow = (children: DNode[]) => mk('box', { dir: 'row', cols: children.map(() => 'auto').join(' '), gap: 0.6, keep: true, valign: 'center' }, children)
 const sec = (build: string, props: Props, children: DNode[]) => mk('section', { build, role: build.split('.')[0], ...props }, children)
 const img = (x: Ctx, ratio: string, extra: Props = {}) =>
-  mk('image', { art: x.rng.pick(x.c.art.length ? x.c.art : [...ART_KINDS]), seed: x.rng.int(1, 9999), tone: x.rng.weighted<number>([[0, 4], [1, 4], [2, 1.5], [3, 1]]), ratio, ...extra })
+  mk('image', { art: x.plan.art, seed: x.rng.int(1, 9999), tone: x.rng.weighted<number>([[0, 4], [1, 4], [2, 1.5], [3, 1]]), ratio, ...extra })
 const flip = (x: Ctx, a: DNode, b: DNode): [DNode, DNode] => (x.rng.chance(0.5) ? [a, b] : [b, a])
 
 // ---------- backdrops ----------
@@ -50,6 +71,23 @@ export function backdropProps(rng: Rng, role: BdRole, bg?: string, flat = false)
   if (rng.chance(0.25) && kind !== 'photo') out.bdStrength = 'strong'
   return out
 }
+/** Band colours: no two neighbouring fills match, one loud band between hero and closing call, footer differs from the call. */
+export function bandRhythm(page: DNode) {
+  const secs: DNode[] = []
+  const collect = (n: DNode) => { if (n.type === 'section' && n.props.role !== 'nav') secs.push(n); n.children.forEach(collect) }
+  collect(page)
+  const loud = (n: DNode) => n.props.bg === 'accent' || n.props.bg === 'inverse'
+  let seenLoud = false
+  secs.forEach((n, i) => {
+    const role = n.props.role
+    if (role === 'hero' || role === 'cta' || role === 'footer') return
+    if (loud(n)) { if (seenLoud) n.props.bg = 'surface'; seenLoud = true }
+    const prev = secs[i - 1]
+    if (prev && n.props.bg && n.props.bg === prev.props.bg) n.props.bg = undefined
+  })
+  secs.forEach((n, i) => { const prev = secs[i - 1]; if (prev && n.props.role === 'footer' && n.props.bg === prev.props.bg && n.props.bg) n.props.bg = n.props.bg === 'surface' ? undefined : 'surface' })
+}
+
 export const clearBackdrop = (): Props => Object.fromEntries(BD_KEYS.map((k) => [k, undefined]))
 const withBd = (x: Ctx, n: DNode, role: BdRole, flat = false): DNode => { n.props = { ...n.props, ...backdropProps(x.rng, role, n.props.bg, flat) }; return n }
 
@@ -60,8 +98,8 @@ export const SECTIONS: Record<string, Builder> = {
   'nav.centered': (x) => mk('nav', { brand: x.c.name, links: x.c.nav, variant: 'centered', border: x.rng.chance(0.5), build: 'nav.centered', role: 'nav' }),
 
   'hero.split': (x) => {
-    const left = col([T(x.c.eyebrow), H(x.c.headline, 'xl', 1), P(x.c.sub, { size: 'l', muted: true, maxw: 46 }), btnRow([B(x.c.cta, 'solid', { arrow: x.rng.chance(0.5) }), B(x.c.ctaAlt, x.rng.pick(['ghost', 'outline']))]), P(x.c.trust + ' · ' + x.c.logos.slice(0, 3).join(' · '), { size: 's', muted: true })], { gap: 1.1, valign: 'center' })
-    const right = img(x, x.rng.pick(['3/4', '4/5', '1/1']), { shape: x.rng.pick(['arch', undefined, undefined, 'arch']), caption: x.rng.chance(0.4) ? x.c.tags[0] : undefined })
+    const left = col([T(x.c.eyebrow), H(x.c.headline, 'xl', 1), P(x.c.sub, { size: 'l', muted: true, maxw: 46 }), btnRow([B(x.c.cta, 'solid', { arrow: x.rng.chance(0.5) }), B(x.c.ctaAlt, x.rng.pick(['ghost', 'outline']))]), P(x.c.hint, { size: 's', muted: true })], { gap: 1.1, valign: 'center' })
+    const right = img(x, x.rng.pick(['3/4', '4/5', '1/1']), { shape: x.plan.imgShape, caption: x.rng.chance(0.4) ? x.c.tags[0] : undefined })
     const [a, b] = flip(x, left, right)
     const l = a === left
     const cols = l ? x.rng.pick(['5fr 4fr', '7fr 4fr', '1fr 1fr', '3fr 2fr']) : x.rng.pick(['4fr 5fr', '4fr 7fr', '1fr 1fr', '2fr 3fr'])
@@ -87,14 +125,14 @@ export const SECTIONS: Record<string, Builder> = {
     const n = x.rng.int(4, 6)
     return sec('features.numbered', { pad: 'l' }, [
       row(x.rng.pick(['1fr 2fr', '2fr 3fr', '1fr 3fr']), [
-        col([H(x.c.heads[0], 'm'), P(x.c.subs[0], { muted: true, size: 's' })], { sticky: true, gap: 0.8 }),
+        col([H(x.c.sec.features, 'm'), P(x.c.subs[0], { muted: true, size: 's' })], { sticky: true, gap: 0.8 }),
         col(x.c.features.slice(0, n).map((f) => row('auto 1fr', [T(String(x.c.features.indexOf(f) + 1).padStart(2, '0'), { variant: 'plain' }), col([H(f.title, 's', 3), P(f.body, { muted: true })], { gap: 0.3 })], { variant: 'rule-top', gap: 1, keep: true })), { gap: 1 }),
       ], { gap: 3 }),
     ])
   },
   'features.twocol': (x) =>
     sec('features.twocol', { pad: 'l' }, [
-      H(x.c.heads[1], 'l'),
+      H(x.c.sec.features, 'l'),
       mk('box', { dir: 'grid', cols: 2, gap: 1.8 }, x.c.features.slice(0, x.rng.pick([4, 6])).map((f) => col([H(f.title, 's', 3), P(f.body, { muted: true })], { variant: 'rule-top', gap: 0.4 }))),
     ]),
   'features.uneven': (x) => {
@@ -116,15 +154,15 @@ export const SECTIONS: Record<string, Builder> = {
       withBd(x, col([T(f[0].title, { variant: 'accent' }), H(f[0].body, 's', 3)], { variant: 'card', pad: 1.2, gap: 0.8, span: spans[0], bg: 'surface', minh: 150 }), 'card'),
       col([mk('stat', { value: s[0].value, label: s[0].label, size: 'l' })], { variant: 'card', pad: 1.2, span: spans[1], bg: 'accent', justify: 'between', minh: 150 }),
       img(x, '4/3', { span: spans[2], minh: 150 }),
-      img(x, '16/9', { span: spans2[0], shape: x.rng.pick([undefined, 'pill']) }),
+      img(x, '16/9', { span: spans2[0], shape: undefined }),
       col([mk('quote', { text: q.text, who: q.who, size: 's' })], { variant: 'card', pad: 1.2, span: spans2[1], bg: 'inverse', justify: 'center' }),
     ]
-    return sec('features.bento', { pad: 'l' }, [row(x.rng.pick(['2fr 1fr', '1fr 1fr']), [H(x.c.heads[3], 'l'), P(f[1].body, { muted: true })], { gap: 2, valign: 'end' }), mk('box', { dir: 'grid', cols: 4, gap: 1 }, tiles)])
+    return sec('features.bento', { pad: 'l' }, [row(x.rng.pick(['2fr 1fr', '1fr 1fr']), [H(x.c.sec.features, 'l'), P(x.c.subs[0], { muted: true })], { gap: 2, valign: 'end' }), mk('box', { dir: 'grid', cols: 4, gap: 1 }, tiles)])
   },
   'features.alt': (x) => {
     const rows = x.c.features.slice(0, 3).map((f, i) => {
       const t = col([T(String(i + 1).padStart(2, '0'), { variant: 'plain' }), H(f.title, 'm', 3), P(f.body, { muted: true, size: 'l' })], { gap: 0.8, valign: 'center' })
-      const im = img(x, x.rng.pick(['4/3', '1/1', '5/4']), { shape: x.rng.pick([undefined, 'arch']) })
+      const im = img(x, x.rng.pick(['4/3', '1/1', '5/4']), { shape: x.plan.imgShape })
       const [a, b] = i % 2 ? [im, t] : [t, im]
       return row(i % 2 ? '1fr 1fr' : x.rng.pick(['1fr 1fr', '5fr 4fr']), [a, b], { valign: 'center', gap: 2.5 })
     })
@@ -136,75 +174,75 @@ export const SECTIONS: Record<string, Builder> = {
       row(4, x.c.stats.map((s) => col([mk('stat', { value: s.value, label: s.label, size: 'l' })], { variant: 'rule-top' })), { gap: 1.2, keep: false }),
     ]),
   'stats.big': (x) =>
-    sec('stats.big', { pad: 'm', bg: x.rng.pick(['accent', 'inverse']) }, [
+    sec('stats.big', { pad: 'm', bg: x.plan.loud }, [
       row(x.rng.pick(['2fr 1fr 1fr', '1fr 1fr 2fr']), x.c.stats.slice(0, 3).map((s, i) => mk('stat', { value: s.value, label: s.label, size: i === (x.rng.chance(0.5) ? 0 : 2) ? 'l' : 'm' })), { gap: 2, valign: 'end' }),
     ]),
 
   'quote.big': (x) => {
     const q = x.rng.pick(x.c.quotes)
-    return sec('quote.big', { pad: 'xl', bg: x.rng.pick(['inverse', 'surface', 'accent']) }, [mk('quote', { text: q.text, who: q.who, size: 'xl', mark: true, maxw: 40 })])
+    return sec('quote.big', { pad: 'xl', bg: x.rng.pick([x.plan.loud, 'surface']) }, [mk('quote', { text: q.text, who: q.who, size: 'xl', mark: true, maxw: 40 })])
   },
   'quote.side': (x) => {
     const q = x.rng.pick(x.c.quotes)
-    return sec('quote.side', { pad: 'l' }, [row(x.rng.pick(['1fr 3fr', '1fr 2fr']), [col([T(x.c.heads[4], { variant: 'plain' }), mk('divider', { variant: 'heavy' })], { gap: 0.6 }), mk('quote', { text: q.text, who: q.who, mark: true })], { gap: 2.5 })])
+    return sec('quote.side', { pad: 'l' }, [row(x.rng.pick(['1fr 3fr', '1fr 2fr']), [col([T(x.c.sec.proof, { variant: 'plain' }), mk('divider', { variant: 'heavy' })], { gap: 0.6 }), mk('quote', { text: q.text, who: q.who, mark: true })], { gap: 2.5 })])
   },
   'quote.pair': (x) =>
     sec('quote.pair', { pad: 'l' }, [row(x.rng.pick(['3fr 2fr', '2fr 3fr']), x.c.quotes.slice(0, 2).map((q, i) => col([mk('quote', { text: q.text, who: q.who, size: i ? 's' : undefined })], { variant: i ? 'outline' : 'rule-left', pad: i ? 1.2 : undefined })), { gap: 2, valign: 'start' })]),
 
   'cta.band': (x) =>
-    sec('cta.band', { pad: 'l', bg: x.rng.pick(['accent', 'inverse']) }, [
+    sec('cta.band', { pad: 'l', bg: x.plan.loud }, [
       row(x.rng.pick(['2fr 1fr', '3fr 1fr']), [col([H(x.c.closing, 'l'), P(x.c.closingSub)], { gap: 0.6 }), btnRow([B(x.c.cta, x.rng.pick(['ink', 'outline']), { arrow: true })])], { gap: 2, valign: 'center' }),
     ]),
   'cta.split': (x) =>
     sec('cta.split', { pad: 'xl' }, [H(x.c.closing, 'xl'), row('1fr 1fr', [P(x.c.closingSub, { size: 'l', muted: true }), btnRow([B(x.c.cta, 'solid', { arrow: true }), B(x.c.ctaAlt, 'outline')])], { gap: 2, valign: 'center' })]),
 
   'index.list': (x) =>
-    sec('index.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.c.heads[5], 'm'), P(x.c.note, { muted: true, size: 's' })], { gap: 0.6, sticky: true }), mk('list', { variant: 'index', items: x.c.index })], { gap: 3 })]),
+    sec('index.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.c.sec.index, 'm'), P(x.c.subs[4], { muted: true, size: 's' })], { gap: 0.6, sticky: true }), mk('list', { variant: 'index', items: x.c.index })], { gap: 3 })]),
   'index.table': (x) =>
-    sec('index.table', { pad: 'm' }, [row('1fr 2fr', [H(x.c.heads[2], 'm'), mk('table', { cols: x.c.tableCols, rows: x.c.tableRows, zebra: x.rng.chance(0.5) })], { gap: 2 })]),
+    sec('index.table', { pad: 'm' }, [row('1fr 2fr', [H(x.c.sec.table, 'm'), mk('table', { cols: x.c.tableCols, rows: x.c.tableRows, zebra: x.rng.chance(0.5) })], { gap: 2 })]),
   'marquee.band': (x) => sec('marquee.band', { pad: 'none', width: 'full' }, [mk('marquee', { items: x.c.marquee, bg: x.rng.pick([undefined, 'ink', 'accent2']) })]),
 
   // ---------- the rest of a traditional site ----------
   'logos.strip': (x) => {
     const names = mk('logos', { items: x.c.logos })
-    return x.rng.chance(0.5)
-      ? sec('logos.strip', { pad: 's', align: 'center', bg: x.rng.pick([undefined, undefined, 'surface']) }, [P(x.c.trust, { size: 's', muted: true, label: true }), names])
-      : sec('logos.strip', { pad: 's', bg: x.rng.pick([undefined, 'surface']) }, [row('1fr 4fr', [P(x.c.trust, { size: 's', muted: true, label: true }), names], { gap: 2, valign: 'center' })])
+    return x.plan.align
+      ? sec('logos.strip', { pad: 's', align: x.plan.align, bg: undefined }, [P(x.c.trust, { size: 's', muted: true, label: true }), names])
+      : sec('logos.strip', { pad: 's' }, [row('1fr 4fr', [P(x.c.trust, { size: 's', muted: true, label: true }), names], { gap: 2, valign: 'center' })])
   },
 
   'features.cards': (x) => {
     const n = x.rng.pick([3, 6])
-    const quiet = x.rng.pick<string | undefined>([undefined, 'surface'])
+    const quiet = x.plan.cardFill
     return sec('features.cards', { pad: 'l' }, [
-      col([T(x.c.eyebrow, { variant: 'plain' }), H(x.c.heads[1], 'l'), P(x.c.subs[0], { muted: true, size: 'l', maxw: 52 })], { gap: 0.7, align: x.rng.pick([undefined, 'center']) }),
-      mk('box', { dir: 'grid', cols: 3, gap: 1.2 }, x.c.features.slice(0, n).map((f) => col([img(x, '1/1', { icon: true, shape: x.rng.pick(['circle', undefined]), tone: x.rng.pick([1, 2]) }), H(f.title, 's', 3), P(f.body, { muted: true })], { variant: 'card', bg: quiet, pad: 1.3, gap: 0.8 }))),
+      col([T(x.c.tags[1], { variant: 'plain' }), H(x.c.sec.features, 'l'), P(x.c.subs[0], { muted: true, size: 'l', maxw: 52 })], { gap: 0.7, align: x.plan.align }),
+      mk('box', { dir: 'grid', cols: 3, gap: 1.2 }, x.c.features.slice(0, n).map((f) => col([img(x, '1/1', { icon: true, shape: x.plan.iconShape, tone: x.plan.iconTone }), H(f.title, 's', 3), P(f.body, { muted: true })], { variant: 'card', bg: quiet, pad: 1.3, gap: 0.8 }))),
     ])
   },
 
   'steps.row': (x) => {
     const boxed = x.rng.chance(0.4)
     return sec('steps.row', { pad: 'l', bg: x.rng.pick([undefined, undefined, 'surface']) }, [
-      row(x.rng.pick(['1fr 1fr', '2fr 1fr']), [H(x.c.heads[2], 'l'), P(x.c.subs[1], { muted: true })], { gap: 2, valign: 'end' }),
+      row(x.rng.pick(['1fr 1fr', '2fr 1fr']), [H(x.c.sec.steps, 'l'), P(x.c.subs[1], { muted: true })], { gap: 2, valign: 'end' }),
       row(3, x.c.steps.map((st, i) => col([T(String(i + 1).padStart(2, '0'), { variant: boxed ? 'accent' : 'solid' }), H(st.title, 's', 3), P(st.body, { muted: true })], boxed ? { variant: 'card', pad: 1.3, gap: 0.7, bg: 'surface' } : { variant: 'rule-top', gap: 0.7 })), { gap: 1.4 }),
     ])
   },
 
   'pricing.cards': (x) => {
-    const loud = x.rng.pick(['inverse', 'accent'])
+    const loud = x.plan.loud
     const plans = x.c.plans
     const cards = plans.map((p, i) => {
       const on = i === 1
       return col([
-        row('1fr auto', [T(p.name, { variant: on ? 'accent' : 'plain' }), on ? P(p.badge, { size: 's', muted: true }) : P(' ', { size: 's' })], { keep: true, valign: 'center' }),
+        row('1fr auto', [T(p.name, { variant: on ? (loud === 'accent' ? 'solid' : 'accent') : 'plain' }), on ? P(p.badge, { size: 's', muted: true }) : P(' ', { size: 's' })], { keep: true, valign: 'center' }),
         mk('stat', { value: p.price, label: p.per }),
         P(p.blurb, { size: 's', muted: true }),
         mk('divider', { variant: 'thin' }),
         mk('list', { variant: 'checks', items: p.perks }),
-        B(x.c.cta, on ? 'solid' : 'outline', { arrow: on }),
+        B(x.c.cta, on ? (loud === 'accent' ? 'ink' : 'solid') : 'outline', { arrow: on }),
       ], { variant: 'card', bg: on ? loud : 'surface', pad: 1.4, gap: 0.9 })
     })
     return sec('pricing.cards', { pad: 'l', gap: 2 }, [
-      col([T(x.c.eyebrow, { variant: 'plain' }), H(x.c.heads[3], 'l'), P(x.c.subs[2], { muted: true, maxw: 52 })], { gap: 0.7, align: x.rng.pick([undefined, 'center']) }),
+      col([T(x.c.tags[2], { variant: 'plain' }), H(x.c.sec.pricing, 'l'), P(x.c.subs[2], { muted: true, maxw: 52 })], { gap: 0.7, align: x.plan.align }),
       mk('box', { dir: 'row', cols: 3, gap: 1.2, valign: 'stretch', align: 'start' }, cards),
     ])
   },
@@ -212,20 +250,20 @@ export const SECTIONS: Record<string, Builder> = {
   'faq.list': (x) => {
     const items = x.c.faqs.map((f) => `${f.q}|${f.a}`)
     if (x.rng.chance(0.35)) {
-      return sec('faq.list', { pad: 'l', sw: 860, gap: 1.6 }, [H(x.c.heads[4], 'l'), mk('faq', { items })])
+      return sec('faq.list', { pad: 'l', sw: 860, gap: 1.6 }, [H(x.c.sec.faq, 'l'), mk('faq', { items })])
     }
-    return sec('faq.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.c.heads[4], 'm'), P(x.c.subs[3], { muted: true, size: 's' }), btnRow([B(x.c.ctaAlt, 'outline')])], { sticky: true, gap: 0.9 }), mk('faq', { items })], { gap: 3 })])
+    return sec('faq.list', { pad: 'l' }, [row(x.rng.pick(['1fr 2fr', '1fr 3fr']), [col([H(x.c.sec.faq, 'm'), P(x.c.subs[3], { muted: true, size: 's' }), btnRow([B(x.c.ctaAlt, 'outline')])], { sticky: true, gap: 0.9 }), mk('faq', { items })], { gap: 3 })])
   },
 
   'footer.cols': (x) => {
-    const dark = x.rng.pick<string | undefined>([undefined, 'surface', 'inverse'])
+    const dark = x.rng.pick<string | undefined>([undefined, 'surface'])
     return sec('footer.cols', { pad: 'm', bg: dark }, [
       row(x.rng.pick(['2fr 1fr 1fr 1fr', '3fr 1fr 1fr 1fr']), [
-        col([H(x.c.name, 's', 3), P(x.c.footer, { muted: true, size: 's', maxw: 34 }), btnRow([mk('input', { label: x.c.subscribe, kind: 'text', placeholder: x.c.email }), B(x.c.subscribe, 'solid', { size: 's' })])], { gap: 0.8 }),
+        col([H(x.c.name, 's', 3), P(x.c.footer, { muted: true, size: 's', maxw: 34 }), row('1fr auto', [mk('input', { label: x.c.subscribe, kind: 'text', placeholder: x.c.email }), B(x.c.subscribe, 'solid', { size: 's' })], { gap: 0.6, keep: true, valign: 'end' })], { gap: 0.8 }),
         ...x.c.footerCols.map((c) => col([P(c.title, { size: 's', muted: true, label: true }), mk('list', { variant: 'links', items: c.links })], { gap: 0.6 })),
       ], { gap: 2 }),
       mk('divider', { variant: 'thin' }),
-      row('1fr auto', [P(`© ${x.c.name} · ${x.c.footer}`, { size: 's', muted: true }), btnRow(x.c.legal.map((l) => B(l, 'ghost', { size: 's' })))], { gap: 1, keep: true, valign: 'center' }),
+      row('1fr auto', [P(`© ${x.c.name}`, { size: 's', muted: true }), btnRow(x.c.legal.map((l) => B(l, 'ghost', { size: 's' })))], { gap: 1, keep: true, valign: 'center' }),
     ])
   },
 
@@ -252,11 +290,11 @@ const S = (k: string, x: Ctx) => SECTIONS[k](x)
 
 export const ARCHETYPES: Archetype[] = [
   // Every marketing archetype is the same kind of site: nav, hero, logos, what-it-does, how-it-works, proof, pricing, FAQ, closing call, footer.
-  // The archetype decides how each of those reads (typographic, bento, banded, sidebar, dense), not which ones exist.
+  // The archetype decides how each of those reads (typographic, bento, banded, sidebar, dense), not which ones exist (check.ts enforces it).
   { id: 'editorial', name: 'Editorial split', kind: 'marketing', build: (x) => [S('nav.bar', x), S('hero.split', x), S('logos.strip', x), S(x.rng.pick(['features.numbered', 'features.twocol', 'features.cards']), x), S('steps.row', x), S(x.rng.pick(['quote.side', 'quote.big']), x), S('pricing.cards', x), S('faq.list', x), S('cta.band', x), S('footer.cols', x)] },
-  { id: 'poster', name: 'Poster / giant type', kind: 'marketing', build: (x) => [S(x.rng.pick(['nav.centered', 'nav.bar']), x), S('hero.giant', x), S('marquee.band', x), S('features.uneven', x), S('steps.row', x), S('stats.big', x), S('pricing.cards', x), S('faq.list', x), S(x.rng.pick(['cta.split', 'cta.band']), x), S('footer.cols', x)] },
-  { id: 'bento', name: 'Bento grid', kind: 'marketing', build: (x) => [S('nav.bar', x), S('hero.stack', x), S('logos.strip', x), S('features.bento', x), S('stats.row', x), S(x.rng.pick(['quote.big', 'quote.pair']), x), S('pricing.cards', x), S('faq.list', x), S('cta.band', x), S('footer.cols', x)] },
-  { id: 'bands', name: 'Stacked bands', kind: 'marketing', build: (x) => [S('nav.centered', x), S('hero.split', x), S('logos.strip', x), S('features.alt', x), S('stats.big', x), S('quote.pair', x), S('pricing.cards', x), S('faq.list', x), S('cta.split', x), S('footer.cols', x)] },
+  { id: 'poster', name: 'Poster / giant type', kind: 'marketing', build: (x) => [S(x.rng.pick(['nav.centered', 'nav.bar']), x), S('hero.giant', x), S('marquee.band', x), S('features.uneven', x), S('steps.row', x), S('stats.big', x), S('logos.strip', x), S('pricing.cards', x), S('faq.list', x), S(x.rng.pick(['cta.split', 'cta.band']), x), S('footer.cols', x)] },
+  { id: 'bento', name: 'Bento grid', kind: 'marketing', build: (x) => [S('nav.bar', x), S('hero.stack', x), S('logos.strip', x), S('features.bento', x), S('steps.row', x), S('stats.row', x), S(x.rng.pick(['quote.big', 'quote.pair']), x), S('pricing.cards', x), S('faq.list', x), S('cta.band', x), S('footer.cols', x)] },
+  { id: 'bands', name: 'Stacked bands', kind: 'marketing', build: (x) => [S('nav.centered', x), S('hero.split', x), S('logos.strip', x), S('features.alt', x), S('steps.row', x), S('stats.big', x), S('quote.pair', x), S('pricing.cards', x), S('faq.list', x), S('cta.split', x), S('footer.cols', x)] },
   {
     id: 'sidebar', name: 'Sidebar-first', kind: 'marketing',
     build: (x) => {
@@ -267,7 +305,7 @@ export const ARCHETYPES: Archetype[] = [
       return [row(cols, [a, b], { keep: true, gap: 0, valign: 'stretch' })]
     },
   },
-  { id: 'index', name: 'Dense index / list', kind: 'marketing', build: (x) => [mk('nav', { brand: x.c.name, links: x.c.nav, cta: x.c.ctaAlt.length < 22 ? x.c.ctaAlt : undefined, variant: 'bar', border: true, ctaVariant: 'outline', build: 'nav.bar', role: 'nav' }), S('hero.dense', x), S('logos.strip', x), S('index.list', x), S('steps.row', x), S('index.table', x), S('quote.pair', x), S('faq.list', x), S('cta.band', x), S('footer.cols', x)] },
+  { id: 'index', name: 'Dense index / list', kind: 'marketing', build: (x) => [mk('nav', { brand: x.c.name, links: x.c.nav, cta: x.c.ctaAlt.length < 22 ? x.c.ctaAlt : undefined, variant: 'bar', border: true, ctaVariant: 'outline', build: 'nav.bar', role: 'nav' }), S('hero.dense', x), S('logos.strip', x), S('index.list', x), S('steps.row', x), S('index.table', x), S('quote.pair', x), S('pricing.cards', x), S('faq.list', x), S('cta.band', x), S('footer.cols', x)] },
 ]
 
 // ---------- app sections ----------

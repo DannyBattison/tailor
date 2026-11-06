@@ -92,7 +92,9 @@ export const DOC_CSS = `
 .d-box[data-variant=outline]{border:max(1px,var(--bw)) solid var(--line);border-radius:var(--radius-l)}
 .d-box[data-variant=rule-top]{border-top:max(1px,var(--bw)) solid var(--ink);padding-top:calc(var(--space) * .6)}
 .d-box[data-variant=rule-left]{border-left:max(1px,var(--bw)) solid var(--ink);padding-left:calc(var(--space) * .8)}
-.d-box[data-sticky=true]{position:sticky;top:0;align-self:start}
+.d-box[data-sticky=true]{position:sticky;top:var(--stick,0px);align-self:start}
+.d-doc:has(>.d-nav[data-variant=bar]){--stick:calc(var(--space) * 1.6 + max(var(--fs-l) * 1.55,46px) + 14px)}
+.d-doc:has(>.d-nav[data-variant=centered]){--stick:calc(var(--space) * 2.8 + max(var(--fs-l) * 1.55,30px) + var(--fs-m) * 1.6 + 14px)}
 .d-box[data-full=true]{min-height:100cqh}
 .d-btn{display:inline-flex;align-items:center;gap:.5em;font:inherit;font-weight:600;font-size:var(--fs-m);padding:calc(.7em * var(--d)) calc(1.3em * var(--d));border-radius:var(--radius);border:max(1.5px,var(--bw)) solid var(--ink);background:var(--accent);color:var(--on-accent);box-shadow:var(--shadow);cursor:pointer;white-space:nowrap;line-height:1.1}
 .d-btn[data-variant=outline]{background:transparent;color:var(--ink);box-shadow:none}
@@ -115,6 +117,7 @@ export const DOC_CSS = `
 .d-nav[data-variant=stacked]{flex-direction:column;align-items:flex-start;gap:calc(var(--space) * 1.6)}
 .d-nav[data-variant=stacked] .d-nav-links{flex-direction:column;gap:.7em;font-size:var(--fs-m)}
 .d-tag{display:inline-block;align-self:flex-start;justify-self:start;font:600 var(--fs-s)/1 var(--f-mono);text-transform:uppercase;letter-spacing:.08em;padding:.45em .8em;border:max(1px,var(--bw)) solid var(--ink);border-radius:calc(var(--radius) * .6);background:var(--accent2);color:var(--ink)}
+.d-box[data-align=center]>.d-tag,.d-sec[data-align=center]>.d-inner>.d-tag{align-self:center;justify-self:center}
 .d-tag[data-variant=solid]{background:var(--ink);color:var(--bg)}
 .d-tag[data-variant=plain]{background:transparent;border-color:var(--line)}
 .d-tag[data-variant=accent]{background:var(--accent);color:var(--on-accent)}
@@ -167,11 +170,11 @@ export const DOC_CSS = `
 .d-quote[data-mark=true] blockquote::before{content:'\\201C';display:block;font-size:2em;line-height:.6;color:var(--accent-text)}
 /* backdrops: quiet texture and colour fields behind heroes and components (all palette-driven) */
 [data-backdrop]{position:relative;--bd-s:1}
-.d-sec[data-backdrop],.d-box[data-backdrop]{overflow:hidden}
+.d-sec[data-backdrop],.d-box[data-backdrop]{overflow:hidden;overflow:clip}
 .d-sec[data-backdrop]>.d-inner{position:relative;z-index:1}
 .d-box[data-backdrop]>*:not(.d-bd){position:relative;z-index:1}
-[data-backdrop=grid]{background-image:linear-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px);background-size:44px 44px;background-position:-1px -1px}
-[data-backdrop=dots]{background-image:radial-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 16%),transparent) 1.4px,transparent 1.7px);background-size:20px 20px}
+[data-backdrop=grid]::before{content:'';position:absolute;inset:-44px;pointer-events:none;z-index:0;background-image:linear-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 7%),transparent) 1px,transparent 1px);background-size:44px 44px;background-position:43px 43px;animation:d-pan-grid 40s linear infinite}
+[data-backdrop=dots]::before{content:'';position:absolute;inset:-20px;pointer-events:none;z-index:0;background-image:radial-gradient(color-mix(in oklab,var(--ink) calc(var(--bd-s) * 16%),transparent) 1.4px,transparent 1.7px);background-size:20px 20px;animation:d-pan-dots 24s linear infinite}
 [data-backdrop=hatch]{background-image:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in oklab,var(--ink) calc(var(--bd-s) * 6%),transparent) 9px 10px)}
 [data-backdrop=split]{background-image:linear-gradient(to right,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
 [data-backdrop=split][data-bdside=right]{background-image:linear-gradient(to left,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 55%),transparent) 0 34%,transparent 34%)}
@@ -236,6 +239,7 @@ export const DOC_CSS = `
 .d-list[data-variant=checks] .d-li-meta{display:none}
 .d-nav[data-variant=bar],.d-nav[data-variant=centered]{position:sticky;top:0;z-index:20;background:color-mix(in oklab,var(--bg) 84%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5)}
 .d-box[data-variant=card]>.d-btn:last-child{margin-top:auto}
+.d-box[data-variant=card]>.d-btn{justify-content:center}
 /* motion: transitions on everything interactive, ease and duration come from the design's motion token */
 .d-btn{transition:translate var(--dur) var(--ease),box-shadow var(--dur) var(--ease),background-color .25s,color .25s,border-color .25s}
 .d-btn>span[aria-hidden]{display:inline-block;transition:translate var(--dur) var(--ease)}
@@ -252,8 +256,8 @@ export const DOC_CSS = `
 .d-box[data-variant=card]:not(:has(.d-table,.d-field,.d-box[data-variant=card])):hover{translate:var(--lift);box-shadow:var(--shadow-h)}
 .d-img .d-art,.d-img img.d-photo{transition:scale 1.1s var(--ease)}
 .d-img:hover .d-art,.d-img:hover img.d-photo{scale:1.07}
-.d-img .d-art{animation:d-drift 26s ease-in-out infinite alternate}
-.d-img:nth-child(even) .d-art{animation-duration:34s;animation-direction:alternate-reverse}
+/* only the hero image drifts: one moving thing at a time, so the page has somewhere for the eye to rest */
+.d-sec[data-role=hero] .d-img:not([data-frame]):not([data-icon]) .d-art{animation:d-drift 26s ease-in-out infinite alternate}
 @keyframes d-drift{from{transform:scale(1.1) translate(-1.6%,-1%)}to{transform:scale(1.1) translate(1.6%,1%)}}
 .d-nav-links a{background:linear-gradient(currentColor,currentColor) left bottom/0 1.5px no-repeat;padding-bottom:.15em;transition:background-size .4s var(--ease),color .2s}
 .d-nav-links a:hover{background-size:100% 1.5px}
@@ -275,16 +279,10 @@ export const DOC_CSS = `
 .d-sec[data-role=hero] .d-btn+.d-btn{animation-delay:.52s}
 .d-sec[data-role=hero] .d-img{animation-delay:.25s;animation-duration:1.3s}
 @keyframes d-rise{from{opacity:0;translate:0 38px}}
-@supports (animation-timeline:view()){
-  .d-sec:not([data-role=hero])>.d-inner>*:not(.d-box[data-dir=row],.d-box[data-dir=grid],.d-marquee),
-  .d-sec:not([data-role=hero])>.d-inner>.d-box[data-dir=row]>*,
-  .d-sec:not([data-role=hero])>.d-inner>.d-box[data-dir=grid]>*{animation:d-rise linear backwards;animation-timeline:view();animation-range:entry 4% entry 44%}
-  .d-sec>.d-inner>.d-box>*:nth-child(2){animation-range:entry 10% entry 50% !important}
-  .d-sec>.d-inner>.d-box>*:nth-child(3){animation-range:entry 16% entry 56% !important}
-  .d-sec>.d-inner>.d-box>*:nth-child(4){animation-range:entry 22% entry 62% !important}
-  .d-sec>.d-inner>.d-box>*:nth-child(n+5){animation-range:entry 28% entry 68% !important}
-}
-@media (prefers-reduced-motion:reduce){.d-doc *,.d-doc *::before,.d-doc *::after{animation:none !important;transition:none !important}}
+.d-frame[data-reveal=on] [data-rv=out]{opacity:0}
+.d-frame[data-reveal=on] [data-rv=in]{animation:d-rise 1s var(--ease) backwards;animation-delay:calc(var(--rv,0) * 80ms)}
+.d-frame.still [data-rv],.d-frame.wire [data-rv]{opacity:1 !important}
+@media (prefers-reduced-motion:reduce){[data-rv]{opacity:1 !important}.d-doc *,.d-doc *::before,.d-doc *::after{animation:none !important;transition:none !important}}
 /* animated backdrops: blurred colour fields drift behind the content, grids and dots pan, art floats */
 [data-backdrop=wash]::before,[data-backdrop=aurora]::before,[data-backdrop=aurora]::after{content:'';position:absolute;pointer-events:none;z-index:0;will-change:transform}
 [data-backdrop=wash]::before{inset:-25%;background-image:radial-gradient(60% 90% at 88% 0%,color-mix(in oklab,var(--accent) calc(var(--bd-s) * 18%),transparent),transparent 70%),radial-gradient(45% 70% at 0% 100%,color-mix(in oklab,var(--accent2) calc(var(--bd-s) * 45%),transparent),transparent 70%);animation:d-wash 20s ease-in-out infinite alternate}
@@ -294,10 +292,8 @@ export const DOC_CSS = `
 @keyframes d-wash{from{transform:translate(-4%,-3%) rotate(0) scale(1)}to{transform:translate(4%,5%) rotate(7deg) scale(1.14)}}
 @keyframes d-blob-a{0%{transform:translate(0,0) scale(1)}50%{transform:translate(20%,24%) scale(1.25)}100%{transform:translate(44%,6%) scale(.92)}}
 @keyframes d-blob-b{0%{transform:translate(0,0) scale(1.1)}50%{transform:translate(-32%,-20%) scale(.85)}100%{transform:translate(-14%,-44%) scale(1.2)}}
-[data-backdrop=grid]{animation:d-pan-grid 40s linear infinite}
-@keyframes d-pan-grid{to{background-position:43px 43px}}
-[data-backdrop=dots]{animation:d-pan-dots 24s linear infinite}
-@keyframes d-pan-dots{to{background-position:20px 20px}}
+@keyframes d-pan-grid{to{transform:translate(44px,44px)}}
+@keyframes d-pan-dots{to{transform:translate(20px,20px)}}
 .d-bd .d-art{animation:d-float-art 30s ease-in-out infinite alternate}
 @keyframes d-float-art{from{transform:scale(1.06) rotate(-1.5deg) translate(-1%,-1%)}to{transform:scale(1.16) rotate(1.5deg) translate(1%,1.5%)}}
 .d-bd img{animation:d-kenburns 36s ease-in-out infinite alternate}

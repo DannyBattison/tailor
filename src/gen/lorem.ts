@@ -39,7 +39,9 @@ export function loremMarketing(seed: number): MarketingContent {
     closing: L.line(5, 8), closingSub: L.sentence(), footer: `${L.label(2)} · ${L.phrase(1)}`,
     art: L.rng.shuffle(['blocks', 'arches', 'rings', 'stripes', 'dots', 'waves', 'sun'] as const).slice(0, 4),
     // everything below is drawn last, so the copy above is the same as before these sections existed
-    subs: Array.from({ length: 4 }, () => L.sentence()),
+    subs: Array.from({ length: 6 }, () => L.sentence()),
+    sec: { features: L.label(2, 4), steps: L.label(2, 4), pricing: L.label(2, 4), faq: L.label(2, 4), proof: L.label(1, 2), index: L.label(2, 3), table: L.label(2, 3) },
+    hint: L.short(),
     trust: L.label(3),
     logos: Array.from({ length: 6 }, () => L.label(1)),
     steps: Array.from({ length: 3 }, () => ({ title: L.label(2, 3), body: L.short() })),

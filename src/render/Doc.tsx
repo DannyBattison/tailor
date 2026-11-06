@@ -1,8 +1,9 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { DNode, Props, Tokens } from '../types'
 import { Art, type ArtKind } from './art'
 import { tokenVars } from './css'
 import { placeholdUrl } from './placehold'
+import { initReveal } from './reveal'
 
 export { placeholdUrl }
 
@@ -188,10 +189,12 @@ export function NodeView({ n }: { n: DNode }): ReactNode {
   }
 }
 
-export function DocView({ root, tokens, ctx = { editor: false }, wire = false }: { root: DNode; tokens: Tokens; ctx?: RenderCtx; wire?: boolean }) {
+export function DocView({ root, tokens, ctx = { editor: false }, wire = false, still = false }: { root: DNode; tokens: Tokens; ctx?: RenderCtx; wire?: boolean; still?: boolean }) {
+  const frame = useRef<HTMLDivElement>(null)
+  useEffect(() => (still ? undefined : initReveal(frame.current)), [root, still])
   return (
     <Ctx.Provider value={{ ...ctx, tokens }}>
-      <div className={'d-frame' + (wire ? ' wire' : '')}>
+      <div ref={frame} className={'d-frame' + (wire ? ' wire' : '') + (still ? ' still' : '')}>
         <div className="d-doc" data-sig={tokens.signature} style={tokenVars(tokens) as CSSProperties}>
           <NodeView n={root} />
         </div>

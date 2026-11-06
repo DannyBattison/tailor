@@ -26,6 +26,10 @@ export interface MarketingContent {
   art: ('blocks' | 'stripes' | 'arches' | 'dots' | 'waves' | 'sun' | 'rings')[]
   /** extra distinct supporting sentences, so no two sections repeat the same lead */
   subs: string[]
+  /** one heading per section, so no two sections on a page share a title */
+  sec: { features: string; steps: string; pricing: string; faq: string; proof: string; index: string; table: string }
+  /** short reassurance under the hero buttons */
+  hint: string
   /** "trusted by" label and wordmarks for the logo strip */
   trust: string
   logos: string[]
@@ -70,7 +74,8 @@ export const PLACEHOLDER_MARKETING: MarketingContent = {
   marquee: ['Keyword one', 'Keyword two', 'Keyword three', 'Keyword four'], tags: ['Label', 'Label', 'Label', 'Label'],
   closing: 'Closing call to action', closingSub: 'One line that tells the reader what happens next.', footer: 'Address or legal line',
   art: ['blocks', 'arches', 'rings', 'stripes'],
-  subs: ['One or two sentences of supporting copy.', 'One or two sentences of supporting copy.', 'One or two sentences of supporting copy.', 'One or two sentences of supporting copy.'],
+  subs: [1, 2, 3, 4, 5, 6].map(() => 'One or two sentences of supporting copy.'),
+  sec: { features: 'Features heading', steps: 'How it works heading', pricing: 'Pricing heading', faq: 'FAQ heading', proof: 'Proof label', index: 'Index heading', table: 'Table heading' }, hint: 'A short reassurance line.',
   trust: 'Trusted by', logos: ['Brand one', 'Brand two', 'Brand three', 'Brand four', 'Brand five', 'Brand six'],
   steps: [1, 2, 3].map((n) => ({ title: `Step ${n} title`, body: 'One sentence describing the step.' })),
   plans: [1, 2, 3].map((n) => ({ name: `Plan ${n}`, price: `$${n}0`, per: 'per month', blurb: 'Who this plan is for.', perks: ['Included item one', 'Included item two', 'Included item three', 'Included item four'], badge: 'Most popular' })),
