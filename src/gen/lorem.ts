@@ -38,6 +38,20 @@ export function loremMarketing(seed: number): MarketingContent {
     tags: Array.from({ length: 4 }, () => L.label(1, 2)),
     closing: L.line(5, 8), closingSub: L.sentence(), footer: `${L.label(2)} · ${L.phrase(1)}`,
     art: L.rng.shuffle(['blocks', 'arches', 'rings', 'stripes', 'dots', 'waves', 'sun'] as const).slice(0, 4),
+    // everything below is drawn last, so the copy above is the same as before these sections existed
+    subs: Array.from({ length: 4 }, () => L.sentence()),
+    trust: L.label(3),
+    logos: Array.from({ length: 6 }, () => L.label(1)),
+    steps: Array.from({ length: 3 }, () => ({ title: L.label(2, 3), body: L.short() })),
+    plans: Array.from({ length: 3 }, (_, i) => ({
+      name: L.label(1), price: ['$0', '$24', '$79'][i], per: L.rng.pick(['per month', 'per seat', 'per year']), blurb: L.short(),
+      perks: Array.from({ length: 4 + (i === 1 ? 1 : 0) }, () => L.phrase(2, 4)), badge: L.label(2),
+    })),
+    faqs: Array.from({ length: 5 }, () => ({ q: L.phrase(4, 7) + '?', a: L.sentence() + ' ' + L.sentence() })),
+    footerCols: Array.from({ length: 3 }, () => ({ title: L.label(1), links: Array.from({ length: 4 }, () => L.label(1, 2)) })),
+    legal: [L.label(1), L.label(1)],
+    email: 'name@example.com',
+    subscribe: L.label(1),
   }
 }
 

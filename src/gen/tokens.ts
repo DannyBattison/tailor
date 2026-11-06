@@ -34,6 +34,8 @@ export function genShape(seed: number, mood: string) {
     headingCase: rng.pick(m.cases),
     tracking: +rng.range(...widen(m.tracking, [-0.05, 0.08])).toFixed(3),
     signature,
+    // drawn last so every other shape value is the same as before motion existed
+    motion: signature === 'hardShadow' || m.shadow.length === 1 && m.shadow[0] === 'hard' ? rng.weighted([['snappy', 3], ['smooth', 1], ['springy', 1]] as const) : rng.weighted([['smooth', 3], ['snappy', 1.5], ['springy', 2]] as const),
   }
 }
 
@@ -45,7 +47,7 @@ export function fixSignature(t: Tokens): Tokens {
 }
 
 const PALETTE_KEYS = ['palette', 'hue', 'spec', 'bgBold', 'mode', 'paletteStrategy'] as const
-const SHAPE_KEYS = ['radius', 'border', 'shadow', 'density', 'scale', 'headingCase', 'tracking', 'signature'] as const
+const SHAPE_KEYS = ['radius', 'border', 'shadow', 'density', 'scale', 'headingCase', 'tracking', 'signature', 'motion'] as const
 
 /** Palette group of tokens (colours + how they were derived). */
 export const paletteGroup = (t: Tokens) => Object.fromEntries(PALETTE_KEYS.map((k) => [k, t[k]])) as Pick<Tokens, (typeof PALETTE_KEYS)[number]>

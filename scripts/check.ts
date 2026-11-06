@@ -155,7 +155,7 @@ import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
     const real = kind === 'marketing' ? d.meta.name : d.meta.name
     if (!ds.patterns.length || !ds.pages.length || blob.includes(real)) { console.log('FAIL export patterns', kind); process.exit(1) }
     const kb = designSystemPrompt(d).length / 1024
-    if (kb > 60) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
+    if (kb > 80) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
   }
   console.log('export for AI ok')
 }

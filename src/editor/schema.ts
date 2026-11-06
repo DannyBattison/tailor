@@ -23,7 +23,7 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     align,
     { key: 'width', label: 'Width', type: 'select', options: o('full') },
     { key: 'gap', label: 'Gap', type: 'number', min: 0, max: 4, step: 0.2 },
-    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo') },
+    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'aurora', 'split', 'noise', 'art', 'photo') },
     { key: 'bdStrength', label: 'Backdrop strength', type: 'select', options: o('strong') },
     { key: 'bdSide', label: 'Split side', type: 'select', options: o('right') },
   ],
@@ -37,7 +37,7 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     align,
     { key: 'valign', label: 'Vertical', type: 'select', options: o('start', 'center', 'end', 'stretch') },
     { key: 'keep', label: 'Keep columns on mobile', type: 'toggle' },
-    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'split', 'noise', 'art', 'photo') },
+    { key: 'backdrop', label: 'Backdrop', type: 'select', options: o('grid', 'dots', 'hatch', 'wash', 'aurora', 'split', 'noise', 'art', 'photo') },
     { key: 'bdStrength', label: 'Backdrop strength', type: 'select', options: o('strong') },
     { key: 'bdSide', label: 'Split side', type: 'select', options: o('right') },
   ],
@@ -54,6 +54,7 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     { key: 'muted', label: 'Muted', type: 'toggle' },
     align,
     { key: 'maxw', label: 'Max width (ch)', type: 'number', min: 20, max: 100, step: 2 },
+    { key: 'label', label: 'Small label style', type: 'toggle' },
   ],
   button: [
     { key: 'label', label: 'Label', type: 'text' },
@@ -66,6 +67,8 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     { key: 'art', label: 'Art', type: 'select', options: ['blocks', 'stripes', 'arches', 'dots', 'waves', 'sun', 'rings'].map((s) => [s, s]) },
     { key: 'ratio', label: 'Ratio', type: 'select', options: ['1/1', '4/3', '3/4', '4/5', '5/4', '16/9', '21/9', '3/1'].map((s) => [s, s]) },
     { key: 'shape', label: 'Shape', type: 'select', options: o('arch', 'pill', 'circle') },
+    { key: 'frame', label: 'Frame', type: 'select', options: o('browser') },
+    { key: 'icon', label: 'Icon size', type: 'toggle' },
     { key: 'seed', label: 'Art seed', type: 'number', min: 1, max: 9999, step: 1 },
     { key: 'tone', label: 'Tone', type: 'number', min: 0, max: 3, step: 1 },
     { key: 'caption', label: 'Caption', type: 'text' },
@@ -93,7 +96,7 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
   ],
   list: [
     { key: 'items', label: 'Items (title | meta)', type: 'lines' },
-    { key: 'variant', label: 'Variant', type: 'select', options: [['ruled', 'ruled'], ['index', 'index'], ['numbered', 'numbered'], ['bullets', 'bullets']] },
+    { key: 'variant', label: 'Variant', type: 'select', options: [['ruled', 'ruled'], ['index', 'index'], ['numbered', 'numbered'], ['bullets', 'bullets'], ['links', 'links'], ['checks', 'checks']] },
   ],
   divider: [{ key: 'variant', label: 'Variant', type: 'select', options: [['thin', 'thin'], ['heavy', 'heavy'], ['dotted', 'dotted']] }],
   input: [
@@ -106,6 +109,8 @@ export const SCHEMA: Partial<Record<NodeType, Field[]>> = {
     { key: 'items', label: 'Items (one per line)', type: 'lines' },
     { key: 'bg', label: 'Fill', type: 'select', options: o('ink', 'accent2') },
   ],
+  logos: [{ key: 'items', label: 'Names (one per line)', type: 'lines' }],
+  faq: [{ key: 'items', label: 'Items (question | answer)', type: 'lines' }],
   quote: [
     { key: 'text', label: 'Quote', type: 'long' },
     { key: 'who', label: 'Attribution', type: 'text' },
@@ -143,6 +148,8 @@ export const ELEMENTS: { type: string; label: string; make: () => DNode }[] = [
   { type: 'divider', label: 'Divider', make: () => mk('divider', { variant: 'thin' }) },
   { type: 'input', label: 'Input', make: () => { const L = loremBits(); return mk('input', { label: L.label(1), kind: 'text', placeholder: L.phrase(2) }) } },
   { type: 'marquee', label: 'Marquee', make: () => { const L = loremBits(); return mk('marquee', { items: [L.label(2), L.label(2), L.label(2)] }) } },
+  { type: 'logos', label: 'Logos', make: () => { const L = loremBits(); return mk('logos', { items: [0, 1, 2, 3, 4].map(() => L.label(1)) }) } },
+  { type: 'faq', label: 'FAQ', make: () => { const L = loremBits(); return mk('faq', { items: [0, 1, 2].map(() => `${L.phrase(5)}?|${L.sentence()}`) }) } },
   { type: 'quote', label: 'Quote', make: () => { const L = loremBits(); return mk('quote', { text: L.sentence(), who: `${L.label(2)}, ${L.phrase(1).toLowerCase()}`, mark: true }) } },
 ]
 

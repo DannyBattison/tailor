@@ -1,6 +1,6 @@
 export type NodeType =
   | 'page' | 'section' | 'box' | 'heading' | 'text' | 'button' | 'image' | 'nav'
-  | 'tag' | 'stat' | 'table' | 'list' | 'divider' | 'input' | 'marquee' | 'quote'
+  | 'tag' | 'stat' | 'table' | 'list' | 'divider' | 'input' | 'marquee' | 'quote' | 'logos' | 'faq'
 
 export type Props = Record<string, any>
 
@@ -36,6 +36,7 @@ export interface PaletteSpec {
 
 export type ShadowKind = 'none' | 'soft' | 'hard'
 export type Signature = 'hardShadow' | 'oversized' | 'ruled' | 'grain' | 'tilted' | 'inverted' | 'marquee'
+export type Motion = 'smooth' | 'snappy' | 'springy'
 export type HeadingCase = 'none' | 'uppercase' | 'lowercase'
 
 export type FontCat = 'serif' | 'sans' | 'display' | 'script' | 'mono'
@@ -65,6 +66,8 @@ export interface Tokens {
   headingCase: HeadingCase
   tracking: number
   signature: Signature
+  /** how hovers, reveals and backdrops move; absent = smooth */
+  motion?: Motion
 }
 
 export type Kind = 'marketing' | 'app'

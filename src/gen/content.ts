@@ -24,6 +24,18 @@ export interface MarketingContent {
   closingSub: string
   footer: string
   art: ('blocks' | 'stripes' | 'arches' | 'dots' | 'waves' | 'sun' | 'rings')[]
+  /** extra distinct supporting sentences, so no two sections repeat the same lead */
+  subs: string[]
+  /** "trusted by" label and wordmarks for the logo strip */
+  trust: string
+  logos: string[]
+  steps: { title: string; body: string }[]
+  plans: { name: string; price: string; per: string; blurb: string; perks: string[]; badge: string }[]
+  faqs: { q: string; a: string }[]
+  footerCols: { title: string; links: string[] }[]
+  legal: string[]
+  email: string
+  subscribe: string
 }
 
 export interface AppContent {
@@ -58,6 +70,13 @@ export const PLACEHOLDER_MARKETING: MarketingContent = {
   marquee: ['Keyword one', 'Keyword two', 'Keyword three', 'Keyword four'], tags: ['Label', 'Label', 'Label', 'Label'],
   closing: 'Closing call to action', closingSub: 'One line that tells the reader what happens next.', footer: 'Address or legal line',
   art: ['blocks', 'arches', 'rings', 'stripes'],
+  subs: ['One or two sentences of supporting copy.', 'One or two sentences of supporting copy.', 'One or two sentences of supporting copy.', 'One or two sentences of supporting copy.'],
+  trust: 'Trusted by', logos: ['Brand one', 'Brand two', 'Brand three', 'Brand four', 'Brand five', 'Brand six'],
+  steps: [1, 2, 3].map((n) => ({ title: `Step ${n} title`, body: 'One sentence describing the step.' })),
+  plans: [1, 2, 3].map((n) => ({ name: `Plan ${n}`, price: `$${n}0`, per: 'per month', blurb: 'Who this plan is for.', perks: ['Included item one', 'Included item two', 'Included item three', 'Included item four'], badge: 'Most popular' })),
+  faqs: [1, 2, 3, 4, 5].map((n) => ({ q: `Question ${n}?`, a: 'A short, direct answer in one or two sentences.' })),
+  footerCols: ['Group one', 'Group two', 'Group three'].map((title) => ({ title, links: ['Link one', 'Link two', 'Link three', 'Link four'] })),
+  legal: ['Privacy', 'Terms'], email: 'name@example.com', subscribe: 'Subscribe',
 }
 export const PLACEHOLDER_APP: AppContent = {
   id: 'placeholder', heads: ['Label', 'Label', 'Label', 'Label', 'Label', 'Label'], note: 'A short supporting note.', name: 'App name', nav: ['Section one', 'Section two', 'Section three', 'Section four', 'Section five'], user: 'User name', title: 'View title', sub: 'One line describing this view.', primary: 'Primary action',

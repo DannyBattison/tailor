@@ -89,6 +89,8 @@ export function Design() {
         <select value={t.shadow} onChange={(e) => set({ shadow: e.target.value as Tokens['shadow'] }, 'shadow')}><option>none</option><option>soft</option><option>hard</option></select></div>
       <div className="field"><label>Heading case</label>
         <select value={t.headingCase} onChange={(e) => set({ headingCase: e.target.value as Tokens['headingCase'] }, 'case')}><option value="none">as written</option><option value="uppercase">UPPERCASE</option><option value="lowercase">lowercase</option></select></div>
+      <div className="field"><label>Motion</label>
+        <select value={t.motion ?? 'smooth'} onChange={(e) => set({ motion: e.target.value as Tokens['motion'] }, 'motion')}><option value="smooth">smooth (eased, unhurried)</option><option value="snappy">snappy (short, crisp)</option><option value="springy">springy (overshoots)</option></select></div>
       <div className="field"><label>Signature move</label>
         <select value={t.signature} onChange={(e) => mutate((d) => withSignature(d, e.target.value as Signature))}>{SIGS.map((s) => <option key={s}>{s}</option>)}</select></div>
     </div>
