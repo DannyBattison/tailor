@@ -5,11 +5,9 @@ import type { Doc, Kind, Locks } from './types'
 
 export type Viewport = 'desktop' | 'tablet' | 'mobile'
 export interface UI {
-  selectedId: string | null
   wire: boolean
   viewport: Viewport
   leftTab: 'generate' | 'critique'
-  rightTab: 'node' | 'design'
   kind: Kind
   mood: string
   /** what's typed in the design-code box; null = show the current design's code */
@@ -30,7 +28,7 @@ const LS_DOC = 'hm.doc'
 const LS_UI = 'hm.ui'
 
 const defaultUI = (): UI => ({
-  selectedId: null, wire: false, viewport: 'desktop', leftTab: 'generate', rightTab: 'design', kind: 'marketing', mood: '',
+  wire: false, viewport: 'desktop', leftTab: 'generate', kind: 'marketing', mood: '',
   codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false, ambient: false, entrance: false, interaction: false },
   variants: null, busy: '', toast: '', menu: '', drawer: '', replay: 0,
 })
@@ -39,7 +37,7 @@ function load(): State {
   const ui = defaultUI()
   try {
     const u = JSON.parse(localStorage.getItem(LS_UI) ?? 'null')
-    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', selectedId: null, menu: '', drawer: '', codeInput: null, replay: 0 })
+    if (u) Object.assign(ui, u, { locks: { ...ui.locks, ...u.locks } }, { variants: null, busy: '', toast: '', menu: '', drawer: '', codeInput: null, replay: 0 })
     if (ui.leftTab !== 'critique') ui.leftTab = 'generate' // saved by a build that still had the Add and Layers tabs
     localStorage.removeItem('hm.key') // earlier builds could store an API key here; there is no AI integration any more
     const d = JSON.parse(localStorage.getItem(LS_DOC) ?? 'null') as Doc | null
@@ -59,7 +57,7 @@ function persist() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(LS_DOC, JSON.stringify(state.doc))
-      const { variants: _v, busy: _b, toast: _t, selectedId: _s, menu: _m, drawer: _d, codeInput: _c, replay: _r, ...rest } = state.ui
+      const { variants: _v, busy: _b, toast: _t, menu: _m, drawer: _d, codeInput: _c, replay: _r, ...rest } = state.ui
       localStorage.setItem(LS_UI, JSON.stringify(rest))
     } catch { /* quota */ }
   }, 250)
@@ -103,5 +101,5 @@ export function toast(msg: string) {
 export function replaceDoc(doc: Doc, record = true) {
   if (record) pushSig(sigOf(doc))
   commit(doc, '', true)
-  setUI({ selectedId: null, codeInput: null, variants: null })
+  setUI({ codeInput: null, variants: null })
 }

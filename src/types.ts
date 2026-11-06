@@ -103,7 +103,7 @@ export interface Meta {
   layoutSeed: number
   contentSeed?: number
   parts?: PartSeeds
-  /** changed by hand since generation (tree edits, sliders, swatches): the design code no longer recreates it exactly */
+  /** changed by hand since generation (sliders, swatches, typed fonts): the design code no longer recreates it exactly */
   edited?: boolean
   name: string
 }

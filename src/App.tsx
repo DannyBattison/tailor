@@ -1,23 +1,19 @@
-import { useEffect, useRef } from 'react'
-import { deleteSelected, duplicateSelected, setMode } from './actions'
+import { useEffect } from 'react'
+import { setMode } from './actions'
 import { Canvas } from './editor/Canvas'
 import { CritiquePanel } from './editor/CritiquePanel'
 import { Design } from './editor/Design'
 import { Generate } from './editor/Generate'
-import { Inspector } from './editor/Inspector'
 import { copyText, download, exportHtml, slug } from './export'
 import { critique } from './gen/critique'
-import { upgradeDoc } from './gen/generate'
 import { designSystem, designSystemPrompt } from './designSystem'
-import { commit, getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
-import type { Doc } from './types'
+import { getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 
 function TopBar() {
   const s = useStore()
   const { ui, doc } = s
   const menu = ui.menu
   const setMenu = (m: '' | 'export') => setUI({ menu: m })
-  const importRef = useRef<HTMLInputElement>(null)
   const name = slug(doc.meta.name)
   const fails = critique(doc).filter((i) => i.level === 'fail').length
   const close = () => setMenu('')
@@ -50,22 +46,9 @@ function TopBar() {
             <small className="hint">The preview page</small>
             <button onClick={() => { download(name + '.html', exportHtml(doc, ui.wire)); close() }}>Download HTML</button>
             <button onClick={async () => { await copyText(exportHtml(doc, ui.wire)); toast('HTML copied'); close() }}>Copy HTML</button>
-            <hr />
-            <button onClick={() => { download(name + '.json', JSON.stringify(doc, null, 2), 'application/json'); close() }}>Download page tree JSON</button>
-            <button onClick={async () => { await copyText(JSON.stringify(doc, null, 2)); toast('JSON copied'); close() }}>Copy page tree JSON</button>
-            <button onClick={() => { importRef.current?.click(); close() }}>Import page tree JSON…</button>
           </div>
         )}
       </div>
-      <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={async (e) => {
-        const f = e.target.files?.[0]; e.target.value = ''
-        if (!f) return
-        try {
-          const d = JSON.parse(await f.text()) as Doc
-          if (!d.root || !d.tokens || !d.meta) throw new Error('Not a Tailor page tree')
-          commit(upgradeDoc(d), '', true); setUI({ selectedId: null, codeInput: null }); toast('Imported')
-        } catch (er) { toast((er as Error).message) }
-      }} />
     </header>
   )
 }
@@ -81,9 +64,6 @@ export default function App() {
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo() }
       else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo() }
-      else if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected() }
-      else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected() }
-      else if (e.key === 'Escape') setUI({ selectedId: null, drawer: '' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -109,11 +89,8 @@ export default function App() {
       </aside>
       <main className="center"><Canvas /></main>
       <aside className="right" id="right-drawer">
-        <nav className="tabs">
-          <button className={ui.rightTab === 'node' ? 'on' : ''} onClick={() => setUI({ rightTab: 'node' })}>Selection</button>
-          <button className={ui.rightTab === 'design' ? 'on' : ''} onClick={() => setUI({ rightTab: 'design' })}>Design tokens</button>
-        </nav>
-        <div className="scroll">{ui.rightTab === 'node' ? <Inspector /> : <Design />}</div>
+        <h2 className="panel-title">Design tokens</h2>
+        <div className="scroll"><Design /></div>
       </aside>
       {(ui.busy || ui.toast) && <div className="toast">{ui.busy || ui.toast}</div>}
     </div>

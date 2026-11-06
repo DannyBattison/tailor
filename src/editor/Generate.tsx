@@ -58,7 +58,7 @@ export function Generate() {
   const motion = (p: MotionPart) => () => rerollMotion(p)
   const motionRows: Row[] = [
     { label: 'Background', hint: (t.ambient ?? 'drift') + (isApp ? ' · app UIs have no backdrops' : hasAmbientTarget(doc.root) ? ' · behind the content' : ' · no backdrop on this page'), lock: 'ambient', run: motion('ambient'), disabled: isApp },
-    { label: 'Entrance', hint: (t.entrance ?? 'rise') + (isApp ? ' · app UIs have no entrances' : ' · as content arrives'), lock: 'entrance', run: motion('entrance'), disabled: isApp, extra: isApp ? undefined : { label: 'Replay', run: replayEntrance } },
+    { label: 'Entrance', hint: (t.entrance ?? 'rise') + (isApp ? ' · app UIs have no entrances' : ' · on arrival'), lock: 'entrance', run: motion('entrance'), disabled: isApp, extra: isApp ? undefined : { label: 'Replay', run: replayEntrance } },
     { label: 'Interaction', hint: `${t.hover ?? 'lift'}, ${t.motion ?? 'smooth'} · on hover`, lock: 'interaction', run: motion('interaction') },
   ]
 
@@ -105,7 +105,7 @@ export function Generate() {
       <div className="parts">{rows.map(rowView)}</div>
       <label className="lbl">Animation</label>
       <div className="parts">{motionRows.map(rowView)}</div>
-      {doc.meta.edited && <p className="warn">Edited by hand since it was generated (tree edits, sliders, swatches). The seed rebuilds the generated design only; export the page tree JSON to keep your edits.</p>}
+      {doc.meta.edited && <p className="warn">Hand-tuned since it was generated. The export includes your tweaks, but the seed only rebuilds the generated design.</p>}
 
       <p className="hint">The page on the canvas is a specimen with lorem ipsum text. The export is the design system; your AI writes the real copy.</p>
       <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { onImage(e.target.files?.[0]); e.target.value = '' }} />
