@@ -33,6 +33,15 @@ ok(archs.size >= 10, 'all archetypes appear')
 ok(fonts.size >= 34, 'fonts vary across 40 seeds: ' + fonts.size)
 ok(bannedHue === 0, 'no blue-purple accents')
 ok(contrastFails === 0, 'palettes pass contrast')
+{
+  const d = generate({ seed: 7, kind: 'marketing', mood: '' })
+  const ids = (t: object) => critique({ ...d, tokens: { ...d.tokens, ...t } }).filter((i) => i.level !== 'pass').map((i) => i.id)
+  ok(ids({ density: 0.8 }).includes('touch'), 'tight density flagged')
+  ok(ids({ navLink: 'dim' }).includes('dim-links'), 'dimming nav flagged')
+  ok(ids({ ambient: 'stutter', signature: 'marquee' }).includes('motion-clash'), 'stutter + marquee flagged')
+  ok(!ids({ density: 1.1, navLink: 'underline', headingCase: 'none' }).includes('touch'), 'roomy density passes')
+  ok(!generate({ seed: 3, kind: 'app', mood: '' }) || !critique(generate({ seed: 3, kind: 'app', mood: '' })).some((i) => i.id === 'h1'), 'app screens skip the h1 rule')
+}
 if (fail) { console.log(fail + ' failures'); process.exit(1) }
 console.log('all checks passed')
 import { designSystem } from '../src/designSystem'
