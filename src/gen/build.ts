@@ -3,7 +3,7 @@ import { stageRng, type Rng } from '../lib/rng'
 import { mk } from '../lib/tree'
 import type { DNode, Kind, Props, Tokens } from '../types'
 import type { AppContent, MarketingContent } from './content'
-import { ART_KINDS } from '../render/art'
+import { ART_KINDS } from '../lib/artKinds'
 
 /** Choices made once per page, so every section speaks the same visual language. */
 export interface Plan {

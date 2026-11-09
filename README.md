@@ -16,6 +16,21 @@ specimen page with lorem ipsum text; the only output is the handover for an agen
 * Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Animation is four independent parts, each with its own seed and lock: background (what moves on its own), entrance (how content arrives), interaction (how elements answer the pointer) and navigation (link hover and how the top bar sits).
 * `src/designSystem.ts` – the export (about 13 KB): colours, type, shape, motion rules, key CSS variables, components, a one-line-per-pattern list and page recipes. No stylesheet.
 
+## Library and MCP server
+
+The generator is also published headless (no React, no preview): `@dannybattison/tailor`.
+
+    npm run build:lib     # dist-lib/index.js, dist-lib/mcp.js, type declarations
+
+    import { generateTheme, rerollTheme } from '@dannybattison/tailor'
+    const t = generateTheme({ seed: 42, kind: 'marketing', mood: 'editorial' })  // or { seed: 'acorn-brook-...' } to reload
+    t.seed; t.designSystem; t.prompt; t.issues
+    rerollTheme(t.seed, 'palette')
+
+MCP server (stdio), e.g. in a client config: `{ "command": "npx", "args": ["-y", "-p", "@dannybattison/tailor", "tailor-mcp"] }`.
+Tools: `generate_theme`, `load_theme`, `reroll_theme_part`, `critique_theme`. Each returns the seed code plus the design system as JSON or an agent-ready prompt.
+Entry points: `src/api.ts` (library), `src/mcp/server.ts` (server).
+
 ## Desktop app (Electron)
 
     npm run electron:dev   # Vite + Electron with hot reload

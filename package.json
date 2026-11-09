@@ -1,6 +1,5 @@
 {
-  "name": "tailor",
-  "private": true,
+  "name": "@dannybattison/tailor",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -10,22 +9,43 @@
     "test": "tsx scripts/check.ts",
     "preview": "vite preview",
     "electron:dev": "node scripts/electron-dev.mjs",
-    "electron": "npm run build && electron ."
+    "electron": "npm run build && electron electron/main.cjs",
+    "build:lib": "node scripts/build-lib.mjs",
+    "prepublishOnly": "npm test && npm run build:lib"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^26.6.6",
     "lorem-ipsum": "^3.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.2.1",
     "electron": "^45.2.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^8.3.6"
   },
-  "main": "electron/main.cjs"
+  "description": "Seeded design-system generator: palette, type, shape, motion and layout recipes. Library and MCP server.",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/types/api.d.ts",
+      "default": "./dist-lib/index.js"
+    }
+  },
+  "types": "./dist-lib/types/api.d.ts",
+  "bin": {
+    "tailor-mcp": "./dist-lib/mcp.js"
+  },
+  "files": [
+    "dist-lib"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
 }
