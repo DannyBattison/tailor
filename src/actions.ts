@@ -1,16 +1,16 @@
 import * as R from './gen/reroll'
-import { fromCode } from './gen/code'
+import { codeProblem, fromCode } from './gen/code'
 import { generate, generateGuarded, generateVariants, partsOf } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { paletteOf } from './gen/palette'
 import { getState, mutate, replaceDoc, setUI, toast } from './store'
 import type { MotionPart } from './gen/tokens'
-import type { Doc } from './types'
+import type { Doc, Tokens } from './types'
 
 /** a fresh base seed (parts are derived from it) */
 const rand = () => Math.floor(Math.random() * 2 ** 31)
-/** a fresh 5-digit part seed */
-const rand5 = () => Math.floor(Math.random() * 100000)
+/** a fresh number for a re-roll (each part folds it into its own range) */
+const rand5 = () => Math.floor(Math.random() * 2 ** 31)
 
 function opts(seed: number) {
   const { ui, doc } = getState()
@@ -26,7 +26,7 @@ export function newDesign() {
 /** Recreate a design from its code. */
 export function loadCode(code: string) {
   const doc = fromCode(code)
-  if (!doc) return toast('That is not a valid design code')
+  if (!doc) return toast(codeProblem(code))
   setUI({ kind: doc.meta.kind })
   replaceDoc(doc)
 }
@@ -50,6 +50,26 @@ export function rerollPart(part: Part) { mutate((d) => R.rerollToken(d, part, ra
 export function rerollText() { mutate((d) => R.rerollText(d, rand5()), '', true) }
 export function rerollBackdrops() { mutate((d) => R.rerollBackdrops(d, rand5()), '', true) }
 export function rerollMotion(part: MotionPart) { mutate((d) => R.rerollMotion(d, part, rand5()), '', true); if (part === 'entrance') replayEntrance() }
+
+/** One setting inside an animation part (the hover style, the nav bar...), leaving the rest of the part as it is. */
+export function rerollMotionField(part: MotionPart, field: keyof Tokens) { mutate((d) => R.rerollMotionField(d, part, field, rand5()), '', true); if (part === 'entrance') replayEntrance() }
+
+const MOTIONS: MotionPart[] = ['ambient', 'entrance', 'interaction', 'nav']
+const LOOKS: Part[] = ['palette', 'fonts', 'shape']
+/** Group re-roll: every animation part that isn't locked, as a single undo step. App UIs have no backdrops or entrances to move, so those stay. */
+export function rerollAnimation() {
+  const { ui, doc } = getState()
+  const parts = MOTIONS.filter((p) => !ui.locks[p] && !(doc.meta.kind === 'app' && (p === 'ambient' || p === 'entrance')))
+  if (!parts.length) return
+  mutate((d) => R.rerollAnimation(d, parts, parts.map(rand5)), '', true)
+  replayEntrance()
+}
+/** Group re-roll: palette, fonts and shape that aren't locked. */
+export function rerollLook() {
+  const { ui } = getState()
+  const parts = LOOKS.filter((p) => !ui.locks[p])
+  if (parts.length) mutate((d) => parts.reduce((acc, p) => R.rerollToken(acc, p, rand5()), d), '', true)
+}
 
 /** Entrances only play once, so restart the canvas page to show one. */
 export function replayEntrance() { setUI({ replay: getState().ui.replay + 1 }) }

@@ -1,5 +1,5 @@
 import { stageRng } from '../lib/rng'
-import type { AmbientMotion, EntranceMotion, HoverMotion, Locks, Motion, PartSeeds, Tokens } from '../types'
+import type { AmbientMotion, EntranceMotion, HoverMotion, Locks, Motion, NavBarStyle, NavLinkMotion, PartSeeds, Tokens } from '../types'
 import { fontSpec, genFonts } from './fonts'
 import { MOODS } from './moods'
 import { DEFAULT_BG_BOLD, genPalette } from './palette'
@@ -42,8 +42,13 @@ export const ENTRANCES: EntranceMotion[] = ['none', 'rise', 'fade', 'zoom', 'sli
 export const HOVERS: HoverMotion[] = ['lift', 'sink', 'grow', 'tilt', 'glow']
 export const FEELS: Motion[] = ['smooth', 'snappy', 'springy']
 
-export type MotionPart = 'ambient' | 'entrance' | 'interaction'
-export const MOTION_PARTS: MotionPart[] = ['ambient', 'entrance', 'interaction']
+export const NAV_LINKS: NavLinkMotion[] = ['underline', 'marker', 'pill', 'dim', 'shift']
+export const NAV_BARS: NavBarStyle[] = ['glass', 'solid', 'static']
+
+export type MotionPart = 'ambient' | 'entrance' | 'interaction' | 'nav'
+export const MOTION_PARTS: MotionPart[] = ['ambient', 'entrance', 'interaction', 'nav']
+/** The tokens each animation part owns: what a part re-roll rewrites, and what a single-field re-roll can target. */
+export const MOTION_FIELDS: Record<MotionPart, (keyof Tokens)[]> = { ambient: ['ambient'], entrance: ['entrance'], interaction: ['hover', 'motion'], nav: ['navLink', 'navBar'] }
 
 /** Tokens for one animation part. The mood only biases the odds, so a re-roll can reach every style. Each draws from its own seed, never from Shape. */
 export function genMotion(part: MotionPart, seed: number, mood: string): Partial<Tokens> {
@@ -51,6 +56,10 @@ export function genMotion(part: MotionPart, seed: number, mood: string): Partial
   const loud = (MOODS[mood] ?? MOODS.editorial).shadow[0] === 'hard'
   if (part === 'ambient') return { ambient: rng.weighted(loud ? [['drift', 2], ['sweep', 3], ['stutter', 3], ['breathe', 1], ['still', 1]] as const : [['drift', 4], ['breathe', 3], ['still', 2], ['sweep', 1], ['stutter', 0.5]] as const) }
   if (part === 'entrance') return { entrance: rng.weighted(loud ? [['slide', 3], ['wipe', 3], ['zoom', 2], ['rise', 2], ['none', 1], ['fade', 0.5]] as const : [['rise', 4], ['fade', 3], ['zoom', 1.5], ['wipe', 1], ['slide', 1], ['none', 1]] as const) }
+  if (part === 'nav') return {
+    navLink: rng.weighted(loud ? [['marker', 3], ['pill', 3], ['shift', 2], ['underline', 1.5], ['dim', 1]] as const : [['underline', 4], ['dim', 2], ['shift', 2], ['marker', 1.5], ['pill', 1.5]] as const),
+    navBar: rng.weighted(loud ? [['solid', 3], ['glass', 2], ['static', 1.5]] as const : [['glass', 4], ['solid', 2], ['static', 1.5]] as const),
+  }
   return {
     hover: rng.weighted(loud ? [['lift', 3], ['sink', 3], ['tilt', 2], ['grow', 1], ['glow', 1]] as const : [['lift', 3], ['glow', 2], ['grow', 2], ['sink', 1], ['tilt', 1]] as const),
     motion: rng.weighted(loud ? [['snappy', 3], ['smooth', 1], ['springy', 1]] as const : [['smooth', 3], ['snappy', 1.5], ['springy', 2]] as const),
@@ -59,7 +68,7 @@ export function genMotion(part: MotionPart, seed: number, mood: string): Partial
 
 /** The tokens an animation part owns, in the same key order genMotion writes them. */
 export const motionGroup = (t: Tokens, part: MotionPart): Partial<Tokens> =>
-  part === 'ambient' ? { ambient: t.ambient } : part === 'entrance' ? { entrance: t.entrance } : { hover: t.hover, motion: t.motion }
+  Object.fromEntries(MOTION_FIELDS[part].map((k) => [k, t[k]]))
 
 /** Signature moves imply shape constraints (hard shadow needs a border, ruled needs rules). */
 export function fixSignature(t: Tokens): Tokens {

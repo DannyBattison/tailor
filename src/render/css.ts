@@ -300,8 +300,20 @@ export const DOC_CSS = `
 /* only the hero image drifts: one moving thing at a time, so the page has somewhere for the eye to rest */
 .d-sec[data-role=hero] .d-img:not([data-frame]):not([data-icon]) .d-art{animation:d-drift calc(26s * var(--bgm-t)) var(--bgm-loop)}
 @keyframes d-drift{from{transform:scale(1.1) translate(-1.6%,-1%)}to{transform:scale(1.1) translate(1.6%,1%)}}
-.d-nav-links a{background:linear-gradient(currentColor,currentColor) left bottom/0 1.5px no-repeat;padding-bottom:.15em;transition:background-size .4s var(--ease),color .2s}
+.d-nav-links a{background:linear-gradient(currentColor,currentColor) left bottom/0 1.5px no-repeat;padding-bottom:.15em;transition:background-size .4s var(--ease),color .2s,opacity .25s,translate .3s var(--ease),background-color .25s}
 .d-nav-links a:hover{background-size:100% 1.5px}
+/* navigation: link hover (data-navlink) and top-bar behaviour (data-nav) */
+.d-doc[data-navlink=marker] .d-nav-links a{background-image:linear-gradient(color-mix(in oklab,var(--accent) 60%,transparent),color-mix(in oklab,var(--accent) 60%,transparent));background-position:left 85%;background-size:0 .5em;padding-bottom:0}
+.d-doc[data-navlink=marker] .d-nav-links a:hover{background-size:100% .5em}
+.d-doc[data-navlink=pill] .d-nav-links a{background-image:none;padding:.2em .7em;margin:-.2em -.7em;border-radius:max(var(--radius),4px)}
+.d-doc[data-navlink=pill] .d-nav-links a:hover{background-color:var(--ink);color:var(--bg)}
+.d-doc[data-navlink=dim] .d-nav-links a{background-image:none}
+.d-doc[data-navlink=dim] .d-nav-links:hover a:not(:hover){opacity:.35}
+.d-doc[data-navlink=shift] .d-nav-links a{background-image:none}
+.d-doc[data-navlink=shift] .d-nav-links a:hover{translate:var(--nudge) 0;color:var(--accent-text)}
+.d-doc[data-nav=solid] .d-nav[data-variant=bar],.d-doc[data-nav=solid] .d-nav[data-variant=centered]{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:max(1px,var(--bw)) solid var(--ink)}
+.d-doc[data-nav=static] .d-nav[data-variant=bar],.d-doc[data-nav=static] .d-nav[data-variant=centered]{position:relative;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+.d-doc[data-nav=static]:has(>.d-nav){--stick:var(--space)}
 .d-list li .d-li-title{transition:translate .35s var(--ease),color .2s}
 .d-list[data-variant=index] li:hover .d-li-title{translate:var(--nudge) 0;color:var(--accent-text)}
 .d-table td{transition:background-color .2s}

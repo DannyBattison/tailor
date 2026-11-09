@@ -13,8 +13,8 @@ specimen page with lorem ipsum text; the only output is the handover for an agen
 * `src/render` – tree → React components + one doc stylesheet, used by the canvas and included in the handover (CSS variables, clamp()/cqw, @container).
 * `src/editor` – read-only preview canvas, design token and generate/critique panels.
 * `src/gen/fonts.ts` + `googleFonts.json` – any free Google font: the seed picks two (curated pairings or rule-based ones from ~1,200 families); you can type your own two with autocomplete. Refresh the list with `node scripts/gen-fonts.mjs`.
-* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Animation is three independent parts, each with its own seed and lock: background (what moves on its own), entrance (how content arrives) and interaction (how elements answer the pointer).
-* `src/designSystem.ts` – the export: tokens, rules, components, a section-pattern library and page recipes.
+* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Animation is four independent parts, each with its own seed and lock: background (what moves on its own), entrance (how content arrives), interaction (how elements answer the pointer) and navigation (link hover and how the top bar sits).
+* `src/designSystem.ts` – the export (about 13 KB): colours, type, shape, motion rules, key CSS variables, components, a one-line-per-pattern list and page recipes. No stylesheet.
 
 ## Desktop app (Electron)
 
@@ -26,7 +26,10 @@ There is no AI integration and no network use beyond Google Fonts and placehold.
 
 ## Seeds
 
-The seed shown in the Generate tab is a 50-digit design code: nine 5-digit blocks (palette, fonts, shape, layout, text, backdrops,
-background animation, entrance animation, interaction animation) and a setup block (mood, product, background boldness, mode). Re-rolling a part rewrites only its own block, and loading a seed
-rebuilds the generated design exactly. Older 35-digit seeds still load and get animation derived from their other blocks. A new design starts with a fully random seed.
+The seed shown in the Generate tab is nine plain words (`acorn-brook-cedar-...`) from a fixed 1,024-word list: 10 bits a word, 90 bits in all.
+They hold the ten part seeds (palette, fonts, shape, layout, text, backdrops, and the background, entrance, interaction and navigation animation), each with a range
+suited to what it controls (`SEED_BITS` in `src/gen/generate.ts`), plus mood, product, background boldness and mode. Type or paste a seed to load it; it is
+case-insensitive and tolerates dashes, spaces or commas. Re-rolling a part changes only the bits that hold it, and loading a seed rebuilds the generated design exactly.
+Export files are named after the seed, and a new design starts with a random one. Earlier digit and base64 seeds are no longer accepted. The word list is part of the format: never reorder it.
+Animation re-rolls come in two levels: "Re-roll all" for the whole group, a re-roll per part (background, entrance, interaction, navigation), and ▸ to re-roll one setting inside a part (hover style or feel; nav links or top bar). Look (palette, fonts, shape) has a "Re-roll all" too.
 Hand tweaks (sliders, swatches, typed fonts) are not part of the code, but the design system export includes them.

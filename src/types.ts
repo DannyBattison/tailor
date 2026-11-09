@@ -43,6 +43,10 @@ export type AmbientMotion = 'still' | 'drift' | 'breathe' | 'sweep' | 'stutter'
 export type EntranceMotion = 'none' | 'rise' | 'fade' | 'zoom' | 'slide' | 'wipe'
 /** how elements answer the pointer */
 export type HoverMotion = 'lift' | 'sink' | 'grow' | 'tilt' | 'glow'
+/** how nav links answer the pointer */
+export type NavLinkMotion = 'underline' | 'marker' | 'pill' | 'dim' | 'shift'
+/** how the top bar sits as the page scrolls */
+export type NavBarStyle = 'glass' | 'solid' | 'static'
 export type HeadingCase = 'none' | 'uppercase' | 'lowercase'
 
 export type FontCat = 'serif' | 'sans' | 'display' | 'script' | 'mono'
@@ -78,6 +82,9 @@ export interface Tokens {
   hover?: HoverMotion
   /** the timing of hovers and presses; absent = smooth */
   motion?: Motion
+  /** navigation: link hover and top-bar behaviour; absent = underline, glass */
+  navLink?: NavLinkMotion
+  navBar?: NavBarStyle
 }
 
 export type Kind = 'marketing' | 'app'
@@ -93,6 +100,7 @@ export interface PartSeeds {
   ambient: number
   entrance: number
   interaction: number
+  nav: number
 }
 
 export interface Meta {
@@ -123,4 +131,5 @@ export interface Locks {
   ambient: boolean
   entrance: boolean
   interaction: boolean
+  nav: boolean
 }
