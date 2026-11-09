@@ -26,11 +26,10 @@ There is no AI integration and no network use beyond Google Fonts and placehold.
 
 ## Seeds
 
-The seed shown in the Generate tab is a 32-character base64url design code (so it is also safe as a filename, and the export files are named after it):
-ten 3-character blocks (palette, fonts, shape, layout, text, backdrops, background, entrance, interaction and navigation animation) and a
-2-character setup block (mood, product, background boldness, mode). Re-rolling a part rewrites only its own block, and loading a seed
-rebuilds the generated design exactly. Older all-digit seeds (35 and 50 digits) still load and get the missing animation derived from their other blocks.
-Beside the seed the panel shows a three-word handle such as `quiet-copper-harbor`. It is a hash of the seed, a label to say aloud or remember, not something that loads
-(a seed holds about 180 bits; three words hold about 18). A new design starts with a fully random seed.
+The seed shown in the Generate tab is nine plain words (`acorn-brook-cedar-...`) from a fixed 1,024-word list: 10 bits a word, 90 bits in all.
+They hold the ten part seeds (palette, fonts, shape, layout, text, backdrops, and the background, entrance, interaction and navigation animation), each with a range
+suited to what it controls (`SEED_BITS` in `src/gen/generate.ts`), plus mood, product, background boldness and mode. Type or paste a seed to load it; it is
+case-insensitive and tolerates dashes, spaces or commas. Re-rolling a part changes only the bits that hold it, and loading a seed rebuilds the generated design exactly.
+Export files are named after the seed, and a new design starts with a random one. Earlier digit and base64 seeds are no longer accepted. The word list is part of the format: never reorder it.
 Animation re-rolls come in two levels: "Re-roll all" for the whole group, a re-roll per part (background, entrance, interaction, navigation), and ▸ to re-roll one setting inside a part (hover style or feel; nav links or top bar). Look (palette, fonts, shape) has a "Re-roll all" too.
 Hand tweaks (sliders, swatches, typed fonts) are not part of the code, but the design system export includes them.

@@ -1,5 +1,5 @@
 import * as R from './gen/reroll'
-import { fromCode } from './gen/code'
+import { codeProblem, fromCode } from './gen/code'
 import { generate, generateGuarded, generateVariants, partsOf } from './gen/generate'
 import { loadSigs } from './gen/guard'
 import { paletteOf } from './gen/palette'
@@ -9,8 +9,8 @@ import type { Doc, Tokens } from './types'
 
 /** a fresh base seed (parts are derived from it) */
 const rand = () => Math.floor(Math.random() * 2 ** 31)
-/** a fresh 5-digit part seed */
-const rand5 = () => Math.floor(Math.random() * 100000)
+/** a fresh number for a re-roll (each part folds it into its own range) */
+const rand5 = () => Math.floor(Math.random() * 2 ** 31)
 
 function opts(seed: number) {
   const { ui, doc } = getState()
@@ -26,7 +26,7 @@ export function newDesign() {
 /** Recreate a design from its code. */
 export function loadCode(code: string) {
   const doc = fromCode(code)
-  if (!doc) return toast('That is not a valid design code')
+  if (!doc) return toast(codeProblem(code))
   setUI({ kind: doc.meta.kind })
   replaceDoc(doc)
 }

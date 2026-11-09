@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, replayEntrance, rerollAnimation, rerollBackdrops, rerollLayout, rerollLook, rerollMotion, rerollMotionField, rerollPart, rerollText, type MotionPart, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
 import { designCode } from '../gen/code'
-import { wordsFor } from '../gen/words'
 import { copyText } from '../export'
 import { fontSpec, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
@@ -116,13 +115,12 @@ export function Generate() {
       </div>
       <div className="row2 seedrow">
         <span className="seedlabel">Seed</span>
-        <span className="seedwords" title="A memorable handle for this seed. It is a label only: paste the seed itself to load a design.">{wordsFor(code)}</span>
         <span style={{ flex: 1 }} />
         <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this seed">Load</button>
         <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's seed">Copy</button>
       </div>
-      <textarea className="seedbox" rows={2} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Ten 3-character blocks (palette, fonts, shape, layout, text, backdrops, background, entrance, interaction, navigation) and a 2-character setup block. Recreates this design exactly." />
-      <p className="hint">The seed is ten 3-character blocks (one per part below) and a setup block (mood, product, boldness, mode). Re-rolling a part rewrites only its block; loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
+      <textarea className="seedbox" rows={3} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Nine words that recreate this design exactly. Type or paste any seed here and press Load." />
+      <p className="hint">The seed is nine words that hold every part below plus mood, product, boldness and mode. Re-rolling a part changes only the bits that hold it; loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
       {groupHead('Look', rerollLook, 'Re-roll palette, fonts and shape together (locked ones stay)')}
       <div className="parts">{rows.slice(0, 3).map(rowView)}</div>
       <label className="lbl">Structure</label>

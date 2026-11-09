@@ -19,15 +19,24 @@ export interface GenOpts {
   prev?: Doc
 }
 
-export const SEED_MAX = 99999 // each part seed is a number up to this, 3 characters in the design code
+/** How many bits each part's seed has. Together with the 12-bit setup block they fill nine words of the design code. */
+export const SEED_BITS: PartSeeds = { palette: 11, fonts: 11, shape: 11, layout: 9, text: 8, backdrops: 7, ambient: 4, entrance: 4, interaction: 6, nav: 6 }
+export const seedSize = (k: keyof PartSeeds) => 2 ** SEED_BITS[k]
+/** Any number, folded into a part's range. */
+export const fitSeed = (k: keyof PartSeeds, n: number) => Math.abs(Math.floor(n)) % seedSize(k)
 const PART_KEYS = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction', 'nav'] as const
-/** Independent seeds for every part, derived from one base seed. */
+/** Independent seeds for every part (each within its own range), derived from one base seed. */
 export const partsFromSeed = (n: number): PartSeeds =>
-  Object.fromEntries(PART_KEYS.map((k) => [k, stageRng(n, 'part:' + k).int(0, SEED_MAX)])) as unknown as PartSeeds
+  Object.fromEntries(PART_KEYS.map((k) => [k, stageRng(n, 'part:' + k).int(0, seedSize(k) - 1)])) as unknown as PartSeeds
 /** The part seeds behind a design (older saved designs fall back to what they stored, and derive the parts they never had). */
 export const partsOf = (d: Doc): PartSeeds => ({ ...partsFromSeed(d.meta.seed), layout: d.meta.layoutSeed, text: d.meta.contentSeed ?? d.meta.layoutSeed, ...d.meta.parts })
 /** A design saved before animation (or navigation) had its own part gets the animation its seed now describes. */
 export function upgradeDoc(d: Doc): Doc {
+  const old = partsOf(d)
+  if (!d.meta.edited && PART_KEYS.some((k) => old[k] >= seedSize(k))) { // from before the seed became words: fold its seeds into the new ranges so the design matches its code
+    const parts = Object.fromEntries(PART_KEYS.map((k) => [k, fitSeed(k, old[k])])) as unknown as PartSeeds
+    return generate({ seed: parts.palette, kind: d.meta.kind, mood: d.meta.mood, parts, bgBold: d.tokens.bgBold, mode: d.tokens.mode })
+  }
   const missing = MOTION_PARTS.filter((k) => (k === 'nav' ? !d.tokens.navLink : !d.tokens.ambient))
   if (!missing.length) return d
   const parts = partsOf(d)

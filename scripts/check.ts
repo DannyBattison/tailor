@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { generate } from '../src/gen/generate'
 import { fontKey } from '../src/gen/fonts'
-import { paletteIssues, isBannedHue, DEFAULT_BG_BOLD } from '../src/gen/palette'
+import { paletteIssues, isBannedHue } from '../src/gen/palette'
 import { DocView } from '../src/render/Doc'
 import { critique } from '../src/gen/critique'
 
@@ -59,8 +59,9 @@ import { contrast as ctr } from '../src/lib/color'
 }
 
 // design code: any sequence of re-rolls is recreated exactly from its code
-import { CODE_LENGTH, designCode, fromCode, isCode } from '../src/gen/code'
-import { wordsFor } from '../src/gen/words'
+import { CODE_WORDS, designCode, fromCode, isCode } from '../src/gen/code'
+import { SEED_BITS } from '../src/gen/generate'
+import { WORDS } from '../src/gen/words'
 import { archetypeFor, partsOf, withSignature } from '../src/gen/generate'
 import * as RR from '../src/gen/reroll'
 import { makeRng } from '../src/lib/rng'
@@ -72,22 +73,23 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
 {
   const rng = makeRng(4242)
   let bad = 0
-  const block = (code: string, i: number) => code.slice(i * 3, i * 3 + 3)
   for (let i = 0; i < 80; i++) {
     const kind = i % 4 === 3 ? 'app' : 'marketing'
     let d = generate({ seed: 100 + i * 37, kind, mood: i % 3 === 0 ? rng.pick(['calm', 'bold', 'editorial', 'retro']) : '' })
-    if (designCode(d).length !== CODE_LENGTH) { bad++; console.log('FAIL code length', designCode(d)) }
+    if (designCode(d).split('-').length !== CODE_WORDS) { bad++; console.log('FAIL code length', designCode(d)) }
     const steps: string[] = []
     for (let k = 0; k < rng.int(1, 6); k++) {
-      const seed = rng.int(0, 99999)
+      const seed = rng.int(0, 2 ** 31)
       const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction', 'nav'] as const)
       steps.push(op)
-      const before = designCode(d)
+      const before = partsOf(d)
       d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : op === 'ambient' || op === 'entrance' || op === 'interaction' || op === 'nav' ? RR.rerollMotion(d, op, seed) : RR.rerollToken(d, op, seed)
-      // only the re-rolled part's own block changes
-      const idx = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction', 'nav'].indexOf(op)
-      const after = designCode(d)
-      for (let b2 = 0; b2 < 11; b2++) if (b2 !== idx && block(before, b2) !== block(after, b2)) { bad++; console.log('FAIL', op, 'changed block', b2) }
+      // only the re-rolled part's own seed changes, and every seed stays inside its range
+      const after = partsOf(d)
+      for (const k of Object.keys(SEED_BITS) as (keyof typeof SEED_BITS)[]) {
+        if (k !== op && before[k] !== after[k]) { bad++; console.log('FAIL', op, 'changed seed', k) }
+        if (after[k] >= 2 ** SEED_BITS[k]) { bad++; console.log('FAIL', k, 'seed out of range', after[k]) }
+      }
     }
     const code = designCode(d)
     const back = fromCode(code)
@@ -105,16 +107,19 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
   const band = withSignature(base, 'marquee')
   const gone = !JSON.stringify(withSignature(band, 'grain').root).includes('sigBand')
   if (!JSON.stringify(band.root).includes('marquee') || !gone) { bad++; console.log('FAIL signature swap') }
-  // garbage and wrong-length codes are rejected; dashes/spaces are tolerated
-  if (fromCode('not-a-code') || fromCode('123') || fromCode('9'.repeat(CODE_LENGTH))) { bad++; console.log('FAIL invalid codes accepted') }
-  const spaced = designCode(base).replace(/(.{3})/g, '$1 ')
-  if (!fromCode(spaced)) { bad++; console.log('FAIL spaced code rejected') }
-  if (designCode(base).length !== 32 || !/^[A-Za-z0-9_-]+$/.test(designCode(base))) { bad++; console.log('FAIL seed is not a 32 character base64url string', designCode(base)) }
-  if (isCode('9'.repeat(CODE_LENGTH + 1)) || fromCode(designCode(base).slice(0, -1))) { bad++; console.log('FAIL wrong-length code accepted') }
-  // three-word handle: stable per seed, and different seeds mostly differ
-  const hs = new Set<string>()
-  for (let i = 0; i < 200; i++) { const w = wordsFor(designCode(generate({ seed: i * 7 + 1, kind: 'marketing', mood: '' }))); if (!/^[a-z]+-[a-z]+-[a-z]+$/.test(w)) { bad++; console.log('FAIL words', w) } hs.add(w) }
-  if (hs.size < 190) { bad++; console.log('FAIL words collide', hs.size) }
+  // garbage, unknown words and wrong-length codes are rejected; case, dashes, spaces and commas are tolerated
+  const code0 = designCode(base)
+  const ws = code0.split('-')
+  if (fromCode('not-a-code') || fromCode('123') || fromCode(ws.slice(1).join('-')) || fromCode(code0 + '-' + ws[0]) || isCode(ws.slice(0, -1).concat('zzzz').join('-'))) { bad++; console.log('FAIL invalid codes accepted') }
+  if (!fromCode(ws.join(' ').toUpperCase()) || !fromCode(ws.join(', '))) { bad++; console.log('FAIL spaced or upper-case code rejected') }
+  if (ws.length !== CODE_WORDS || !ws.every((w) => /^[a-z]+$/.test(w))) { bad++; console.log('FAIL seed is not plain words', code0) }
+  if (WORDS.length !== 1024 || new Set(WORDS).size !== 1024) { bad++; console.log('FAIL word list is not 1024 unique words') }
+  // a code whose spare bit is set isn't one of ours
+  if (fromCode([WORDS[1023], ...ws.slice(1)].join('-')) && ws[0] !== WORDS[1023] && WORDS.indexOf(ws[0]) < 512) { bad++; console.log('FAIL spare bit ignored') }
+  // distinct designs make distinct codes
+  const seeds = new Set<string>()
+  for (let i = 0; i < 300; i++) seeds.add(designCode(generate({ seed: i * 7 + 1, kind: 'marketing', mood: '' })))
+  if (seeds.size < 295) { bad++; console.log('FAIL seeds collide', seeds.size) }
   if (bad) process.exit(1)
   console.log('design code ok')
 }
@@ -274,20 +279,11 @@ import { tokenVars, DOC_CSS } from '../src/render/css'
   // every var the stylesheet reads from the animation tokens is one tokenVars writes
   const vars = tokenVars(generate({ seed: 5, kind: 'marketing', mood: '' }).tokens)
   for (const m of DOC_CSS.matchAll(/var\((--(?:bgm|in|hover|nudge|rv-hide)[a-z-]*)/g)) if (!(m[1] in vars)) fail('unset css var ' + m[1])
-  // seeds and saved designs from before the animation blocks keep working
+  // saved designs from before animation had parts, or from before seeds were words, are brought up to date and match their seed
   const base = generate({ seed: 77, kind: 'marketing', mood: '' })
-  // old all-digit seeds: 5 digits per block, then setup (mood, kind, boldness, mode)
-  const bp = partsOf(base)
-  const digits = (keys: (keyof typeof bp)[]) => keys.map((k) => String(bp[k]).padStart(5, '0')).join('') + MOOD_NAMES.indexOf(base.meta.mood) + '0' + String(Math.round((base.tokens.bgBold ?? DEFAULT_BG_BOLD) * 20)).padStart(2, '0') + '0'
-  const old = digits(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'])
-  const loaded = fromCode(old)
-  const mid = fromCode(digits(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction']))
-  if (!mid || JSON.stringify(motionGroup(mid.tokens, 'entrance')) !== JSON.stringify(motionGroup(base.tokens, 'entrance')) || JSON.stringify(mid.tokens.palette) !== JSON.stringify(base.tokens.palette) || mid.meta.archetype !== base.meta.archetype) fail('50-digit seed no longer loads')
-  if (!loaded || old.length !== 35) fail('old seed rejected')
-  else {
-    if (JSON.stringify(loaded.tokens.palette) !== JSON.stringify(base.tokens.palette) || loaded.meta.archetype !== base.meta.archetype) fail('old seed changed the design')
-    if (designCode(loaded).length !== CODE_LENGTH || fingerprint(fromCode(designCode(loaded))!) !== fingerprint(loaded)) fail('old seed does not round trip')
-  }
+  const wide = { ...base, meta: { ...base.meta, parts: { ...partsOf(base), palette: 98765, layout: 54321, text: 99999 } } } // big seeds, as the digit format allowed
+  const folded = upgradeDoc(wide)
+  if (Object.entries(partsOf(folded)).some(([k, v]) => v >= 2 ** SEED_BITS[k as keyof typeof SEED_BITS]) || fingerprint(fromCode(designCode(folded))!) !== fingerprint(folded)) fail('old big seeds not folded into the new ranges')
   const { ambient: _x, entrance: _y, hover: _z, navLink: _nl3, navBar: _nb3, ...oldTokens } = base.tokens
   const { ambient: _p, entrance: _q, interaction: _r, nav: _n, ...oldParts } = partsOf(base)
   const saved = upgradeDoc({ ...base, tokens: oldTokens, meta: { ...base.meta, parts: oldParts as any } })
