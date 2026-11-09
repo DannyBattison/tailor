@@ -4,8 +4,9 @@ import { Canvas } from './editor/Canvas'
 import { CritiquePanel } from './editor/CritiquePanel'
 import { Design } from './editor/Design'
 import { Generate } from './editor/Generate'
-import { copyText, download, slug } from './export'
+import { copyText, download } from './export'
 import { critique } from './gen/critique'
+import { designCode } from './gen/code'
 import { designSystem, designSystemPrompt } from './designSystem'
 import { getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 
@@ -14,7 +15,7 @@ function TopBar() {
   const { ui, doc } = s
   const menu = ui.menu
   const setMenu = (m: '' | 'export') => setUI({ menu: m })
-  const name = slug(doc.meta.name)
+  const name = designCode(doc)
   const fails = critique(doc).filter((i) => i.level === 'fail').length
   const close = () => setMenu('')
   return (

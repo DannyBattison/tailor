@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { generate } from '../src/gen/generate'
 import { fontKey } from '../src/gen/fonts'
-import { paletteIssues, isBannedHue } from '../src/gen/palette'
+import { paletteIssues, isBannedHue, DEFAULT_BG_BOLD } from '../src/gen/palette'
 import { DocView } from '../src/render/Doc'
 import { critique } from '../src/gen/critique'
 
@@ -41,7 +41,9 @@ import { contrast as ctr } from '../src/lib/color'
 {
   const d = generate({ seed: 7, kind: 'marketing', mood: '' })
   const ds = designSystem(d)
-  const bad = !ds.colors.bg.hex || !ds.typography.googleFonts.includes('fonts.googleapis.com') || !ds.rules.length || !ds.layout.outline.length
+  const bad = !ds.colors.bg || !ds.typography.googleFonts.includes('fonts.googleapis.com') || !ds.rules.length || !ds.layout.sections.length || 'css' in ds
+  const size = JSON.stringify(ds, null, 2).length
+  if (size > 20000) { console.log('FAIL design system export bloated:', size); process.exit(1) }
   if (bad) { console.log('FAIL design system incomplete'); process.exit(1) }
   const u = placeholdUrl({ ratio: '16/9', tone: 2, caption: 'Hi there' }, d.tokens)
   if (!/^https:\/\/placehold\.co\/1200x675\/[0-9a-f]{6}\/[0-9a-f]{6}\?text=Hi\+there&font=(playfair-display|source-sans-pro)$/.test(u)) { console.log('FAIL placehold url', u); process.exit(1) }
@@ -57,7 +59,8 @@ import { contrast as ctr } from '../src/lib/color'
 }
 
 // design code: any sequence of re-rolls is recreated exactly from its code
-import { CODE_LENGTH, designCode, fromCode } from '../src/gen/code'
+import { CODE_LENGTH, designCode, fromCode, isCode } from '../src/gen/code'
+import { wordsFor } from '../src/gen/words'
 import { archetypeFor, partsOf, withSignature } from '../src/gen/generate'
 import * as RR from '../src/gen/reroll'
 import { makeRng } from '../src/lib/rng'
@@ -69,7 +72,7 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
 {
   const rng = makeRng(4242)
   let bad = 0
-  const block = (code: string, i: number) => code.slice(i * 5, i * 5 + 5)
+  const block = (code: string, i: number) => code.slice(i * 3, i * 3 + 3)
   for (let i = 0; i < 80; i++) {
     const kind = i % 4 === 3 ? 'app' : 'marketing'
     let d = generate({ seed: 100 + i * 37, kind, mood: i % 3 === 0 ? rng.pick(['calm', 'bold', 'editorial', 'retro']) : '' })
@@ -77,14 +80,14 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
     const steps: string[] = []
     for (let k = 0; k < rng.int(1, 6); k++) {
       const seed = rng.int(0, 99999)
-      const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction'] as const)
+      const op = rng.pick(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction', 'nav'] as const)
       steps.push(op)
       const before = designCode(d)
-      d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : op === 'ambient' || op === 'entrance' || op === 'interaction' ? RR.rerollMotion(d, op, seed) : RR.rerollToken(d, op, seed)
+      d = op === 'layout' ? RR.rerollLayout(d, seed) : op === 'text' ? RR.rerollText(d, seed) : op === 'backdrops' ? RR.rerollBackdrops(d, seed) : op === 'ambient' || op === 'entrance' || op === 'interaction' || op === 'nav' ? RR.rerollMotion(d, op, seed) : RR.rerollToken(d, op, seed)
       // only the re-rolled part's own block changes
-      const idx = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction'].indexOf(op)
+      const idx = ['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction', 'nav'].indexOf(op)
       const after = designCode(d)
-      for (let b2 = 0; b2 < 10; b2++) if (b2 !== idx && block(before, b2) !== block(after, b2)) { bad++; console.log('FAIL', op, 'changed block', b2) }
+      for (let b2 = 0; b2 < 11; b2++) if (b2 !== idx && block(before, b2) !== block(after, b2)) { bad++; console.log('FAIL', op, 'changed block', b2) }
     }
     const code = designCode(d)
     const back = fromCode(code)
@@ -104,8 +107,14 @@ const fingerprint = (d: ReturnType<typeof generate>) => {
   if (!JSON.stringify(band.root).includes('marquee') || !gone) { bad++; console.log('FAIL signature swap') }
   // garbage and wrong-length codes are rejected; dashes/spaces are tolerated
   if (fromCode('not-a-code') || fromCode('123') || fromCode('9'.repeat(CODE_LENGTH))) { bad++; console.log('FAIL invalid codes accepted') }
-  const spaced = designCode(base).replace(/(\d{5})/g, '$1 ')
+  const spaced = designCode(base).replace(/(.{3})/g, '$1 ')
   if (!fromCode(spaced)) { bad++; console.log('FAIL spaced code rejected') }
+  if (designCode(base).length !== 32 || !/^[A-Za-z0-9_-]+$/.test(designCode(base))) { bad++; console.log('FAIL seed is not a 32 character base64url string', designCode(base)) }
+  if (isCode('9'.repeat(CODE_LENGTH + 1)) || fromCode(designCode(base).slice(0, -1))) { bad++; console.log('FAIL wrong-length code accepted') }
+  // three-word handle: stable per seed, and different seeds mostly differ
+  const hs = new Set<string>()
+  for (let i = 0; i < 200; i++) { const w = wordsFor(designCode(generate({ seed: i * 7 + 1, kind: 'marketing', mood: '' }))); if (!/^[a-z]+-[a-z]+-[a-z]+$/.test(w)) { bad++; console.log('FAIL words', w) } hs.add(w) }
+  if (hs.size < 190) { bad++; console.log('FAIL words collide', hs.size) }
   if (bad) process.exit(1)
   console.log('design code ok')
 }
@@ -172,7 +181,7 @@ import { luminance } from '../src/lib/color'
   console.log('coherence ok')
 }
 
-// export-for-AI: pattern library is structure-only (no sample copy) and the prompt stays chat-sized
+// export-for-AI: pattern library carries no sample copy and the prompt stays small
 import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
 {
   for (const kind of ['marketing', 'app'] as const) {
@@ -180,9 +189,9 @@ import { designSystem as dsx, designSystemPrompt } from '../src/designSystem'
     const ds = dsx(d)
     const blob = JSON.stringify(ds.patterns)
     const real = kind === 'marketing' ? d.meta.name : d.meta.name
-    if (!ds.patterns.length || !ds.pages.length || blob.includes(real)) { console.log('FAIL export patterns', kind); process.exit(1) }
+    if (!Object.keys(ds.patterns).length || !ds.pages.length || blob.includes(real)) { console.log('FAIL export patterns', kind); process.exit(1) }
     const kb = designSystemPrompt(d).length / 1024
-    if (kb > 80) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
+    if (kb > 20) { console.log('FAIL prompt too big', kind, kb); process.exit(1) }
   }
   console.log('export for AI ok')
 }
@@ -227,23 +236,31 @@ import { MOOD_NAMES } from '../src/gen/moods'
 }
 
 // animation: three independent parts, each re-rollable and lockable, and none of them owned by Shape
-import { AMBIENTS, ENTRANCES, FEELS, HOVERS, motionGroup, MOTION_PARTS } from '../src/gen/tokens'
+import { AMBIENTS, ENTRANCES, FEELS, HOVERS, NAV_BARS, NAV_LINKS, MOTION_FIELDS, motionGroup, MOTION_PARTS } from '../src/gen/tokens'
 import { upgradeDoc } from '../src/gen/generate'
 import { tokenVars, DOC_CSS } from '../src/render/css'
 {
   let bad = 0
   const fail = (m: string) => { bad++; if (bad < 12) console.log('FAIL animation', m) }
-  const seen: Record<string, Set<string>> = { ambient: new Set(), entrance: new Set(), hover: new Set(), motion: new Set() }
+  const seen: Record<string, Set<string>> = { ambient: new Set(), entrance: new Set(), hover: new Set(), motion: new Set(), navLink: new Set(), navBar: new Set() }
   for (let i = 0; i < 400; i++) {
     const d = generate({ seed: i * 29 + 3, kind: i % 3 === 2 ? 'app' : 'marketing', mood: MOOD_NAMES[i % MOOD_NAMES.length] })
     for (const k of Object.keys(seen)) seen[k].add(String((d.tokens as any)[k]))
-    const part = MOTION_PARTS[i % 3]
+    const part = MOTION_PARTS[i % 4]
     const next = RR.rerollMotion(d, part, i * 13)
     if (JSON.stringify(motionGroup(next.tokens, part)) === JSON.stringify(motionGroup(d.tokens, part))) fail('re-roll landed on the same style ' + part)
     for (const other of MOTION_PARTS) if (other !== part && JSON.stringify(motionGroup(next.tokens, other)) !== JSON.stringify(motionGroup(d.tokens, other))) fail(part + ' re-roll touched ' + other)
-    const { ambient: _a, entrance: _e, hover: _h, motion: _m, ...rest } = next.tokens
-    const { ambient: _a2, entrance: _e2, hover: _h2, motion: _m2, ...rest2 } = d.tokens
+    const { ambient: _a, entrance: _e, hover: _h, motion: _m, navLink: _nl, navBar: _nb, ...rest } = next.tokens
+    const { ambient: _a2, entrance: _e2, hover: _h2, motion: _m2, navLink: _nl2, navBar: _nb2, ...rest2 } = d.tokens
     if (JSON.stringify(rest) !== JSON.stringify(rest2) || JSON.stringify(next.root) !== JSON.stringify(d.root)) fail(part + ' re-roll touched something other than animation')
+    // a single-setting re-roll changes that setting and nothing else
+    const fp = MOTION_PARTS[(i + 1) % 4], fk = MOTION_FIELDS[fp][i % MOTION_FIELDS[fp].length]
+    const one = RR.rerollMotionField(d, fp, fk, i * 11 + 1)
+    const o1 = motionGroup(one.tokens, fp) as any, o0 = motionGroup(d.tokens, fp) as any
+    if (MOTION_FIELDS[fp].length > 1 && MOTION_FIELDS[fp].some((k) => k !== fk && o1[k as string] !== o0[k as string])) fail('field re-roll changed a sibling setting ' + fk)
+    if (JSON.stringify(o1) === JSON.stringify(o0)) fail('field re-roll was a no-op ' + fk)
+    const refound = fromCode(designCode(one))!
+    if (JSON.stringify(motionGroup(refound.tokens, fp)) !== JSON.stringify(o1)) fail('field re-roll not recreated by its seed ' + fk)
     const sh = RR.rerollToken(d, 'shape', i * 17)
     for (const p of MOTION_PARTS) if (JSON.stringify(motionGroup(sh.tokens, p)) !== JSON.stringify(motionGroup(d.tokens, p))) fail('shape re-roll touched ' + p)
     // a locked part survives New design, hand edits included
@@ -252,22 +269,27 @@ import { tokenVars, DOC_CSS } from '../src/render/css'
     if (kept.tokens.entrance !== 'wipe' || partsOf(kept).entrance !== partsOf(d).entrance) fail('entrance lock')
     for (const [v, val] of Object.entries(tokenVars(d.tokens))) if (val === undefined || String(val).includes('undefined')) fail('css var ' + v)
   }
-  const all = { ambient: AMBIENTS, entrance: ENTRANCES, hover: HOVERS, motion: FEELS } as Record<string, string[]>
+  const all = { ambient: AMBIENTS, entrance: ENTRANCES, hover: HOVERS, motion: FEELS, navLink: NAV_LINKS, navBar: NAV_BARS } as Record<string, string[]>
   for (const k of Object.keys(all)) for (const s of all[k]) if (!seen[k].has(s)) fail(k + ' never rolls ' + s)
   // every var the stylesheet reads from the animation tokens is one tokenVars writes
   const vars = tokenVars(generate({ seed: 5, kind: 'marketing', mood: '' }).tokens)
   for (const m of DOC_CSS.matchAll(/var\((--(?:bgm|in|hover|nudge|rv-hide)[a-z-]*)/g)) if (!(m[1] in vars)) fail('unset css var ' + m[1])
   // seeds and saved designs from before the animation blocks keep working
   const base = generate({ seed: 77, kind: 'marketing', mood: '' })
-  const old = designCode(base).slice(0, 30) + designCode(base).slice(45)
+  // old all-digit seeds: 5 digits per block, then setup (mood, kind, boldness, mode)
+  const bp = partsOf(base)
+  const digits = (keys: (keyof typeof bp)[]) => keys.map((k) => String(bp[k]).padStart(5, '0')).join('') + MOOD_NAMES.indexOf(base.meta.mood) + '0' + String(Math.round((base.tokens.bgBold ?? DEFAULT_BG_BOLD) * 20)).padStart(2, '0') + '0'
+  const old = digits(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops'])
   const loaded = fromCode(old)
+  const mid = fromCode(digits(['palette', 'fonts', 'shape', 'layout', 'text', 'backdrops', 'ambient', 'entrance', 'interaction']))
+  if (!mid || JSON.stringify(motionGroup(mid.tokens, 'entrance')) !== JSON.stringify(motionGroup(base.tokens, 'entrance')) || JSON.stringify(mid.tokens.palette) !== JSON.stringify(base.tokens.palette) || mid.meta.archetype !== base.meta.archetype) fail('50-digit seed no longer loads')
   if (!loaded || old.length !== 35) fail('old seed rejected')
   else {
     if (JSON.stringify(loaded.tokens.palette) !== JSON.stringify(base.tokens.palette) || loaded.meta.archetype !== base.meta.archetype) fail('old seed changed the design')
     if (designCode(loaded).length !== CODE_LENGTH || fingerprint(fromCode(designCode(loaded))!) !== fingerprint(loaded)) fail('old seed does not round trip')
   }
-  const { ambient: _x, entrance: _y, hover: _z, ...oldTokens } = base.tokens
-  const { ambient: _p, entrance: _q, interaction: _r, ...oldParts } = partsOf(base)
+  const { ambient: _x, entrance: _y, hover: _z, navLink: _nl3, navBar: _nb3, ...oldTokens } = base.tokens
+  const { ambient: _p, entrance: _q, interaction: _r, nav: _n, ...oldParts } = partsOf(base)
   const saved = upgradeDoc({ ...base, tokens: oldTokens, meta: { ...base.meta, parts: oldParts as any } })
   const rebuilt = fromCode(designCode(saved))!
   if (!saved.tokens.ambient || MOTION_PARTS.some((p) => JSON.stringify(motionGroup(rebuilt.tokens, p)) !== JSON.stringify(motionGroup(saved.tokens, p)))) fail('old saved design does not match its seed')

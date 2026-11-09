@@ -1,7 +1,8 @@
-import { useRef } from 'react'
-import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, replayEntrance, rerollBackdrops, rerollLayout, rerollMotion, rerollPart, rerollText, type MotionPart, type Part } from '../actions'
+import { useRef, useState } from 'react'
+import { loadCode, makeVariants, newDesign, newDocFromScratch, pickVariant, replayEntrance, rerollAnimation, rerollBackdrops, rerollLayout, rerollLook, rerollMotion, rerollMotionField, rerollPart, rerollText, type MotionPart, type Part } from '../actions'
 import { archetypesFor } from '../gen/build'
 import { designCode } from '../gen/code'
+import { wordsFor } from '../gen/words'
 import { copyText } from '../export'
 import { fontSpec, loadFont } from '../gen/fonts'
 import { MOOD_NAMES } from '../gen/moods'
@@ -9,7 +10,7 @@ import { paletteFromImage } from '../imagePalette'
 import { walk } from '../lib/tree'
 import { DocView } from '../render/Doc'
 import { mutate, setUI, toast, useStore } from '../store'
-import type { DNode, Locks } from '../types'
+import type { DNode, Locks, Tokens } from '../types'
 
 /** Background animation needs something behind the content to move: a backdrop or the hero's generated art. The marquee moves regardless. */
 function hasAmbientTarget(root: DNode) {
@@ -21,11 +22,14 @@ function hasAmbientTarget(root: DNode) {
   return found
 }
 
-interface Row { label: string; hint: string; lock?: keyof Locks; run: () => void; disabled?: boolean; extra?: { label: string; run: () => void } }
+/** One setting inside a part, re-rollable on its own (drill-down). */
+interface Field { label: string; value: string; run: () => void }
+interface Row { label: string; hint: string; lock?: keyof Locks; run: () => void; disabled?: boolean; extra?: { label: string; run: () => void }; fields?: Field[] }
 
 export function Generate() {
   const { ui, doc } = useStore()
   const file = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState<string>('')
   const code = designCode(doc)
   const shown = ui.codeInput ?? code
   const dirty = ui.codeInput !== null && ui.codeInput.trim() !== code
@@ -56,25 +60,41 @@ export function Generate() {
   const t = doc.tokens
   const isApp = doc.meta.kind === 'app' // app screens have no backdrops or sections for these to act on
   const motion = (p: MotionPart) => () => rerollMotion(p)
+  const field = (p: MotionPart, label: string, k: keyof Tokens, fallback: string): Field => ({ label, value: String(t[k] ?? fallback), run: () => rerollMotionField(p, k) })
   const motionRows: Row[] = [
     { label: 'Background', hint: (t.ambient ?? 'drift') + (isApp ? ' · app UIs have no backdrops' : hasAmbientTarget(doc.root) ? ' · behind the content' : ' · no backdrop on this page'), lock: 'ambient', run: motion('ambient'), disabled: isApp },
     { label: 'Entrance', hint: (t.entrance ?? 'rise') + (isApp ? ' · app UIs have no entrances' : ' · on arrival'), lock: 'entrance', run: motion('entrance'), disabled: isApp, extra: isApp ? undefined : { label: 'Replay', run: replayEntrance } },
-    { label: 'Interaction', hint: `${t.hover ?? 'lift'}, ${t.motion ?? 'smooth'} · on hover`, lock: 'interaction', run: motion('interaction') },
+    { label: 'Interaction', hint: `${t.hover ?? 'lift'}, ${t.motion ?? 'smooth'} · buttons and cards`, lock: 'interaction', run: motion('interaction'), fields: [field('interaction', 'Hover', 'hover', 'lift'), field('interaction', 'Feel', 'motion', 'smooth')] },
+    { label: 'Navigation', hint: `${t.navLink ?? 'underline'}, ${t.navBar ?? 'glass'} · links and top bar`, lock: 'nav', run: motion('nav'), fields: [field('nav', 'Links', 'navLink', 'underline'), field('nav', 'Top bar', 'navBar', 'glass')] },
   ]
 
   const rowView = (r: Row) => {
     const locked = r.lock ? !!ui.locks[r.lock] : false
+    const drill = open === r.label && r.fields
     return (
-      <div key={r.label} className={'part' + (locked ? ' locked' : '')}>
+      <div key={r.label} className="partwrap">
+      <div className={'part' + (locked ? ' locked' : '')}>
         {r.lock ? (
           <button className={'lockbtn' + (locked ? ' on' : '')} onClick={() => lock(r.lock!)} aria-pressed={locked} title={locked ? 'Locked: kept by New design, and can\'t be re-rolled' : 'Free: New design will change it'}>{locked ? '🔒︎' : '○'}</button>
         ) : <span className="lockbtn none" />}
         <span className="plabel"><b>{r.label}</b><small>{r.hint}</small></span>
+        {r.fields && <button className="mini ghost" aria-expanded={!!drill} onClick={() => setOpen(drill ? '' : r.label)} title={`Re-roll one setting of ${r.label.toLowerCase()} at a time`}>{drill ? '▾' : '▸'}</button>}
         {r.extra && <button className="mini" onClick={r.extra.run}>{r.extra.label}</button>}
         <button className="mini" disabled={locked || r.disabled} onClick={r.run} title={locked ? 'Unlock to re-roll' : 'Re-roll ' + r.label.toLowerCase()}>↻ Re-roll</button>
       </div>
+      {drill && (
+        <div className="fields">
+          {r.fields!.map((f) => (
+            <div key={f.label} className="field"><span><small>{f.label}</small> <b>{f.value}</b></span><button className="mini" disabled={locked || r.disabled} onClick={f.run} title={`Re-roll ${f.label.toLowerCase()} only`}>↻</button></div>
+          ))}
+        </div>
+      )}
+      </div>
     )
   }
+  const groupHead = (label: string, run: () => void, title: string) => (
+    <div className="grouphead"><label className="lbl">{label}</label><button className="mini" onClick={run} title={title}>↻ Re-roll all</button></div>
+  )
 
   return (
     <div className="panel-body">
@@ -96,14 +116,18 @@ export function Generate() {
       </div>
       <div className="row2 seedrow">
         <span className="seedlabel">Seed</span>
+        <span className="seedwords" title="A memorable handle for this seed. It is a label only: paste the seed itself to load a design.">{wordsFor(code)}</span>
         <span style={{ flex: 1 }} />
         <button onClick={() => loadCode(shown)} disabled={!dirty} title="Rebuild the design from this seed">Load</button>
         <button onClick={async () => { await copyText(code); toast('Seed copied') }} title="Copy this design's seed">Copy</button>
       </div>
-      <textarea className="seedbox" rows={3} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Nine 5-digit blocks (palette, fonts, shape, layout, text, backdrops, background, entrance, interaction) and a setup block. Recreates this design exactly." />
-      <p className="hint">The seed is ten 5-digit blocks: palette, fonts, shape, layout, text, backdrops, the three animations, then setup (mood, product, boldness, mode). Re-rolling a part rewrites only its block, and loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
-      <div className="parts">{rows.map(rowView)}</div>
-      <label className="lbl">Animation</label>
+      <textarea className="seedbox" rows={2} spellCheck={false} value={shown} onChange={(e) => setUI({ codeInput: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (dirty) loadCode(shown) } }} title="Ten 3-character blocks (palette, fonts, shape, layout, text, backdrops, background, entrance, interaction, navigation) and a 2-character setup block. Recreates this design exactly." />
+      <p className="hint">The seed is ten 3-character blocks (one per part below) and a setup block (mood, product, boldness, mode). Re-rolling a part rewrites only its block; loading a seed rebuilds the design exactly. Lock a part to keep it through New design.</p>
+      {groupHead('Look', rerollLook, 'Re-roll palette, fonts and shape together (locked ones stay)')}
+      <div className="parts">{rows.slice(0, 3).map(rowView)}</div>
+      <label className="lbl">Structure</label>
+      <div className="parts">{rows.slice(3).map(rowView)}</div>
+      {groupHead('Animation', rerollAnimation, 'Re-roll every animation part together (locked ones stay). Open a part with ▸ to re-roll its settings one at a time')}
       <div className="parts">{motionRows.map(rowView)}</div>
       {doc.meta.edited && <p className="warn">Hand-tuned since it was generated. The export includes your tweaks, but the seed only rebuilds the generated design.</p>}
 

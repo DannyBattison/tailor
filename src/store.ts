@@ -29,7 +29,7 @@ const LS_UI = 'hm.ui'
 
 const defaultUI = (): UI => ({
   wire: false, viewport: 'desktop', leftTab: 'generate', kind: 'marketing', mood: '',
-  codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false, ambient: false, entrance: false, interaction: false },
+  codeInput: null, locks: { palette: false, fonts: false, shape: false, layout: false, copy: false, ambient: false, entrance: false, interaction: false, nav: false },
   variants: null, busy: '', toast: '', menu: '', drawer: '', replay: 0,
 })
 
