@@ -1,53 +1,87 @@
+<a href="https://www.buymeacoffee.com/YOUR_USERNAME"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
+
 # Tailor
 
-A theming tool: it generates a design system that doesn't look AI-generated, and exports it as a design doc for AI agents to build a whole multi-page site with.
-Design decisions are taken out of any model's hands: seeded tokens → layout archetype → component tree → HTML. The canvas is a
-specimen page with lorem ipsum text; the only output is the handover for an agent, as a prompt or JSON (Export for AI).
+Generate a design system that doesn't look AI-generated, then hand it to an AI agent to build a whole site with.
 
-    npm install --include=dev
-    npm run dev           # editor in the browser
-    npm run build         # typecheck + production build
-    npm test              # generation sanity checks (determinism, contrast, hue ban, design-code round trips, export)
+Tailor makes the design decisions itself: colours, fonts, shape, motion and layout all come from a seed, not from a model. You get a design doc (as a prompt or JSON) that an agent can follow. The same seed always gives the same design.
 
-* `src/gen` – seeded (mulberry32) token, palette (OKLCH), font, archetype, lorem text and critique logic. Pure functions.
-* `src/render` – tree → React components + one doc stylesheet, used by the canvas and included in the handover (CSS variables, clamp()/cqw, @container).
-* `src/editor` – read-only preview canvas, design token and generate/critique panels.
-* `src/gen/fonts.ts` + `googleFonts.json` – any free Google font: the seed picks two (curated pairings or rule-based ones from ~1,200 families); you can type your own two with autocomplete. Refresh the list with `node scripts/gen-fonts.mjs`.
-* Marketing previews are one coherent website: nav, hero, logo strip, features, how it works, proof, pricing, FAQ, closing call, footer. Archetypes change how each reads, not which exist. Animation is four independent parts, each with its own seed and lock: background (what moves on its own), entrance (how content arrives), interaction (how elements answer the pointer) and navigation (link hover and how the top bar sits).
-* `src/designSystem.ts` – the export (about 13 KB): colours, type, shape, motion rules, key CSS variables, components, a one-line-per-pattern list and page recipes. No stylesheet.
+It comes in three forms:
 
-## Library and MCP server
+* **Design tool**: a visual editor in the browser or as a desktop app.
+* **npm package**: use the generator from your own code.
+* **MCP server**: let an AI client generate and tweak themes directly.
 
-The generator is also published headless (no React, no preview): `@dannybattison/tailor`.
+## Design tool
 
-    npm run build:lib     # dist-lib/index.js, dist-lib/mcp.js, type declarations
+Needs Node 20+.
 
-    import { generateTheme, rerollTheme } from '@dannybattison/tailor'
-    const t = generateTheme({ seed: 42, kind: 'marketing', mood: 'editorial' })  // or { seed: 'acorn-brook-...' } to reload
-    t.seed; t.designSystem; t.prompt; t.issues
-    rerollTheme(t.seed, 'palette')
+    npm install
+    npm run dev            # open the editor in your browser
 
-MCP server (stdio), e.g. in a client config: `{ "command": "npx", "args": ["-y", "-p", "@dannybattison/tailor", "tailor-mcp"] }`.
-Tools: `generate_theme`, `load_theme`, `reroll_theme_part`, `critique_theme`. Each returns the seed code plus the design system as JSON or an agent-ready prompt.
-Entry points: `src/api.ts` (library), `src/mcp/server.ts` (server).
+Generate a design, re-roll the parts you don't like (palette, fonts, shape, layout, text, animation), tweak by hand, then use **Export for AI** to copy the design doc.
 
-## Desktop app (Electron)
+Other commands:
 
-    npm run electron:dev   # Vite + Electron with hot reload
-    npm run electron       # production build, then open in Electron
+    npm run build          # typecheck + production build
+    npm test               # sanity checks (determinism, contrast, export, seed round trips)
 
-If Electron's binary is missing (`node_modules/electron/dist`), run `node node_modules/electron/install.js`.
-There is no AI integration and no network use beyond Google Fonts and placehold.co images.
+### Desktop app
+
+    npm run electron:dev   # with hot reload
+    npm run electron       # production build, then open
+
+If Electron's binary is missing, run `node node_modules/electron/install.js`.
+
+The tool needs no account or API key. The only network use is Google Fonts and placehold.co images.
+
+## npm package
+
+    npm install @dannybattison/tailor
+
+```js
+import { generateTheme, rerollTheme } from '@dannybattison/tailor'
+
+const t = generateTheme({ seed: 42, kind: 'marketing', mood: 'editorial' })
+t.seed          // nine-word seed code that recreates this theme
+t.designSystem  // structured design system
+t.prompt        // the same, as agent-ready text
+t.issues        // critique findings (contrast etc.)
+
+generateTheme({ seed: t.seed })     // reload from a seed code
+rerollTheme(t.seed, 'palette')      // change one part, keep the rest
+```
+
+It's headless: no React and no preview. To build it from source, run `npm run build:lib`.
+
+## MCP server
+
+Add this to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "tailor": { "command": "npx", "args": ["-y", "-p", "@dannybattison/tailor", "tailor-mcp"] }
+  }
+}
+```
+
+Tools:
+
+* `generate_theme`: new theme from a number, kind (`marketing` or `app`), mood, mode and background boldness.
+* `load_theme`: recreate a theme from its seed code.
+* `reroll_theme_part`: change one part and keep the rest.
+* `critique_theme`: check a theme for problems.
+
+Each returns the seed code plus the design system, as JSON or as a prompt.
 
 ## Seeds
 
-The seed shown in the Generate tab is nine plain words (`acorn-brook-cedar-...`) from a fixed 1,024-word list: 10 bits a word, 90 bits in all.
-They hold the ten part seeds (palette, fonts, shape, layout, text, backdrops, and the background, entrance, interaction and navigation animation), each with a range
-suited to what it controls (`SEED_BITS` in `src/gen/generate.ts`), plus mood, product, background boldness and mode. Type or paste a seed to load it; it is
-case-insensitive and tolerates dashes, spaces or commas. Re-rolling a part changes only the bits that hold it, and loading a seed rebuilds the generated design exactly.
-Export files are named after the seed, and a new design starts with a random one. Earlier digit and base64 seeds are no longer accepted. The word list is part of the format: never reorder it.
-Animation re-rolls come in two levels: "Re-roll all" for the whole group, a re-roll per part (background, entrance, interaction, navigation), and ▸ to re-roll one setting inside a part (hover style or feel; nav links or top bar). Look (palette, fonts, shape) has a "Re-roll all" too.
-Hand tweaks (sliders, swatches, typed fonts) are not part of the code, but the design system export includes them.
+A seed is nine plain words like `acorn-brook-cedar-...`. It encodes every part of the design, so you can share or save it and get the exact same result back. Re-rolling one part changes only the bits that hold it. Hand tweaks (sliders, swatches, typed fonts) aren't in the seed, but the export includes them.
+
+## How it works
+
+Seeded tokens → layout archetype → component tree → HTML. Pure functions in `src/gen`, rendering in `src/render`, the editor in `src/editor`, the export in `src/designSystem.ts`. Fonts come from the Google Fonts list in `src/gen/googleFonts.json` (refresh it with `node scripts/gen-fonts.mjs`).
 
 ## License
 
