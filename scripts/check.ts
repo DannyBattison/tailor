@@ -301,3 +301,11 @@ import { tokenVars, DOC_CSS } from '../src/render/css'
   if (bad) { console.log(bad + ' animation failures'); process.exit(1) }
   console.log('animation ok')
 }
+{
+  const { generateTheme } = await import('../src/lib-entry')
+  const t = generateTheme()
+  const t2 = generateTheme({ seed: t.seed })
+  const bad = (() => { try { generateTheme({ seed: 'not a real seed' }); return false } catch { return true } })()
+  const fine = typeof t.seed === 'string' && t.designSystem && Array.isArray(t.issues) && generateTheme({ kind: 'app' }).designSystem
+  if (!fine || JSON.stringify(t.designSystem) !== JSON.stringify(t2.designSystem) || t2.seed !== t.seed || !bad) { console.log('FAIL generateTheme entry'); process.exit(1) }
+}

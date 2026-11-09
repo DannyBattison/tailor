@@ -35,15 +35,17 @@
   "description": "Seeded design-system generator: palette, type, shape, motion and layout recipes. Library and MCP server.",
   "exports": {
     ".": {
-      "types": "./dist-lib/types/api.d.ts",
-      "default": "./dist-lib/index.js"
-    }
+      "types": "./src/lib-entry.ts",
+      "default": "./src/lib-entry.ts"
+    },
+    "./package.json": "./package.json"
   },
-  "types": "./dist-lib/types/api.d.ts",
+  "types": "./src/lib-entry.ts",
   "bin": {
     "tailor-mcp": "./dist-lib/mcp.js"
   },
   "files": [
+    "src",
     "dist-lib"
   ],
   "engines": {
