@@ -13,7 +13,7 @@ for (let i = 0; i < 60; i++) {
   try { if ((await fetch(url)).ok) break } catch { /* not up yet */ }
   await new Promise((r) => setTimeout(r, 500))
 }
-const app = spawn(electron, ['.'], { stdio: 'inherit', env: { ...process.env, VITE_DEV_URL: url } })
+const app = spawn(electron, ['electron/main.cjs'], { stdio: 'inherit', env: { ...process.env, VITE_DEV_URL: url } })
 const stop = () => { vite.kill(); app.kill() }
 app.on('close', () => { vite.kill(); process.exit(0) })
 process.on('SIGINT', stop)

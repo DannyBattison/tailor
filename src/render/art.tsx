@@ -1,7 +1,8 @@
 import { makeRng } from '../lib/rng'
 
-export const ART_KINDS = ['blocks', 'stripes', 'arches', 'dots', 'waves', 'sun', 'rings'] as const
-export type ArtKind = (typeof ART_KINDS)[number]
+import { ART_KINDS, type ArtKind } from '../lib/artKinds'
+
+export { ART_KINDS, type ArtKind }
 
 const TONES = ['surface', 'accent2', 'accent', 'ink'] as const
 
