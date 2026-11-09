@@ -18,20 +18,45 @@ export function Art({ kind, seed, tone = 0, soft = false }: { kind: ArtKind; see
   const c = (i: number) => pal[i % pal.length]
   const shapes: JSX.Element[] = []
   if (kind === 'blocks') {
-    // Bauhaus-style tiles on a 4x3 grid: squares, circles, quarter and half circles, with gaps left empty
+    // Bauhaus tiles on a 4x3 grid, built from a rule so they read as a pattern: either one motif repeated
+    // with a rotation that cycles in a 2x2 pinwheel, or a free left half mirrored into the right.
     const cell = 100
-    let k = 0
-    for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 4; gx++) {
-      const kindOf = r.weighted<string>([['square', 2], ['circle', 2], ['quarter', 3], ['half', 2], ['empty', 3]])
+    type Cell = { shape: string; rot: number; col: number }
+    const grid: Cell[][] = []
+    const mirror = r.chance(0.5)
+    if (mirror) {
+      const set = r.shuffle(['quarter', 'quarter', 'half', 'circle', 'square', 'empty']).slice(0, 3)
+      for (let gy = 0; gy < 3; gy++) {
+        grid.push([])
+        for (let gx = 0; gx < 2; gx++) grid[gy].push({ shape: r.pick(set), rot: r.pick([0, 90, 180, 270]), col: r.int(0, 2) })
+        for (let gx = 2; gx < 4; gx++) {
+          const m = grid[gy][3 - gx]
+          grid[gy].push({ ...m, rot: m.shape === 'quarter' ? (270 - m.rot + 360) % 360 : m.shape === 'half' ? (360 - m.rot) % 360 : m.rot })
+        }
+      }
+    } else {
+      const motif = r.pick(['quarter', 'quarter', 'half'])
+      const base = r.pick([0, 90])
+      const twoTone = r.chance(0.5)
+      for (let gy = 0; gy < 3; gy++) {
+        grid.push([])
+        for (let gx = 0; gx < 4; gx++) {
+          const spin = base + 90 * ((gx % 2) + 2 * (gy % 2) * (gx % 2 ? -1 : 1))
+          grid[gy].push({ shape: motif, rot: ((spin % 360) + 360) % 360, col: twoTone ? (gx + gy) % 2 : 0 })
+        }
+      }
+    }
+    grid.forEach((rowCells, gy) => rowCells.forEach(({ shape, rot, col: ci }, gx) => {
       const x = gx * cell
       const y = gy * cell
-      const col = c(k++)
-      const rot = r.pick([0, 90, 180, 270])
-      if (kindOf === 'square') shapes.push(<rect key={k} x={x} y={y} width={cell} height={cell} fill={col} />)
-      else if (kindOf === 'circle') shapes.push(<circle key={k} cx={x + cell / 2} cy={y + cell / 2} r={cell / 2} fill={col} />)
-      else if (kindOf === 'quarter') shapes.push(<path key={k} d={`M${x} ${y + cell} V${y} A${cell} ${cell} 0 0 1 ${x + cell} ${y + cell} Z`} fill={col} transform={`rotate(${rot} ${x + cell / 2} ${y + cell / 2})`} />)
-      else if (kindOf === 'half') shapes.push(<path key={k} d={`M${x} ${y + cell / 2} A${cell / 2} ${cell / 2} 0 0 1 ${x + cell} ${y + cell / 2} Z`} fill={col} transform={`rotate(${rot} ${x + cell / 2} ${y + cell / 2})`} />)
-    }
+      const key = gx + '-' + gy
+      const fill = c(ci)
+      const tf = `rotate(${rot} ${x + cell / 2} ${y + cell / 2})`
+      if (shape === 'square') shapes.push(<rect key={key} x={x} y={y} width={cell} height={cell} fill={fill} />)
+      else if (shape === 'circle') shapes.push(<circle key={key} cx={x + cell / 2} cy={y + cell / 2} r={cell / 2} fill={fill} />)
+      else if (shape === 'quarter') shapes.push(<path key={key} d={`M${x} ${y + cell} V${y} A${cell} ${cell} 0 0 1 ${x + cell} ${y + cell} Z`} fill={fill} transform={tf} />)
+      else if (shape === 'half') shapes.push(<path key={key} d={`M${x} ${y + cell} A${cell / 2} ${cell / 2} 0 0 1 ${x + cell} ${y + cell} Z`} fill={fill} transform={tf} />)
+    }))
   } else if (kind === 'stripes') {
     const w = W / r.int(6, 14)
     const ang = r.pick([0, 0, 90, -30, 45])
