@@ -48,3 +48,7 @@ case-insensitive and tolerates dashes, spaces or commas. Re-rolling a part chang
 Export files are named after the seed, and a new design starts with a random one. Earlier digit and base64 seeds are no longer accepted. The word list is part of the format: never reorder it.
 Animation re-rolls come in two levels: "Re-roll all" for the whole group, a re-roll per part (background, entrance, interaction, navigation), and ▸ to re-roll one setting inside a part (hover style or feel; nav links or top bar). Look (palette, fonts, shape) has a "Re-roll all" too.
 Hand tweaks (sliders, swatches, typed fonts) are not part of the code, but the design system export includes them.
+
+## License
+
+MIT. See [LICENSE](LICENSE). Keep the copyright and licence notice when you copy or distribute this code.
