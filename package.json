@@ -50,5 +50,26 @@
   ],
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DannyBattison/tailor.git"
+  },
+  "homepage": "https://github.com/DannyBattison/tailor#readme",
+  "bugs": {
+    "url": "https://github.com/DannyBattison/tailor/issues"
+  },
+  "keywords": [
+    "design-system",
+    "theme",
+    "generator",
+    "mcp",
+    "model-context-protocol",
+    "design-tokens",
+    "ai"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }
