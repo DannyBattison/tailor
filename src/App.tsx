@@ -10,6 +10,22 @@ import { designCode } from './gen/code'
 import { designSystem, designSystemPrompt } from './designSystem'
 import { getState, redo, setUI, toast, undo, useStore, type Viewport } from './store'
 
+function LogoMark() {
+  return (
+    <svg className="mark" viewBox="80 80 380 340" aria-hidden="true">
+      <defs>
+        <mask id="logo-eye" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+          <rect width="512" height="512" fill="#fff" />
+          <ellipse cx="344" cy="168" rx="6" ry="15" transform="rotate(45 344 168)" fill="#000" />
+        </mask>
+      </defs>
+      <path mask="url(#logo-eye)" d="M138 374 L352 160" fill="none" stroke="currentColor" strokeWidth="30" strokeLinecap="round" />
+      <path d="M344 168 C420 100 440 220 380 240 C320 260 300 190 350 210 C400 230 400 330 340 370" fill="none" stroke="#e9694b" strokeWidth="10" strokeLinecap="round" />
+      <path d="M340 370 C300 396 250 392 150 392" fill="none" stroke="#e9694b" strokeWidth="10" strokeLinecap="round" strokeDasharray="26 18" />
+    </svg>
+  )
+}
+
 function TopBar() {
   const s = useStore()
   const { ui, doc } = s
@@ -20,7 +36,10 @@ function TopBar() {
   const close = () => setMenu('')
   return (
     <header className="topbar">
-      <div className="logo" aria-label="Tailor"><span className="word">t<span className="ai">ai</span>lor</span><small>design that doesn't look generated</small></div>
+      <div className="logo" aria-label="Tailor">
+        <LogoMark />
+        <div className="name"><span className="word">t<span className="ai">ai</span>lor</span><small>design that doesn't look generated</small></div>
+      </div>
       <div className="group">
         <button disabled={!s.past.length} onClick={undo} title="Undo (Ctrl+Z)">Undo</button>
         <button disabled={!s.future.length} onClick={redo} title="Redo (Ctrl+Shift+Z)">Redo</button>
