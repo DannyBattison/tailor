@@ -1,5 +1,4 @@
-[![Latest release](https://img.shields.io/github/v/release/DannyBattison/tailor?label=release)](https://github.com/DannyBattison/tailor/releases/latest)
-[![Release date](https://img.shields.io/github/release-date/DannyBattison/tailor?label=released)](https://github.com/DannyBattison/tailor/releases/latest)
+[![CI](https://github.com/DannyBattison/tailor/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBattison/tailor/actions/workflows/ci.yml)
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-%E2%98%95-yellow)](https://buymeacoffee.com/dannybattison)
 
 # Tailor
